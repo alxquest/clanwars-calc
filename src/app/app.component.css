@@ -601,17 +601,37 @@
 }
 
 .stat-table th:nth-child(1), .stat-table td:nth-child(1) {
-  width: 25px;
+  width: 56px;
 }
 
 .stat-table th:nth-child(2), .stat-table td:nth-child(2) {
-  width: 28%;
+  width: 26%;
   text-align: start;
 }
 
-.stat-table th:nth-child(3), .stat-table td:nth-child(3) { width: 18%; }
-.stat-table th:nth-child(4), .stat-table td:nth-child(4) { width: 18%; }
-.stat-table th:nth-child(5), .stat-table td:nth-child(5) { width: 16%; }
+.stat-table th:nth-child(3), .stat-table td:nth-child(3) { width: 19%; }
+.stat-table th:nth-child(4), .stat-table td:nth-child(4) { width: 19%; }
+.stat-table th:nth-child(5), .stat-table td:nth-child(5) { width: 14%; }
+.stat-table th:nth-child(6), .stat-table td:nth-child(6) { width: 12%; }
+
+/* td defaults to left, so the numeric columns have to opt back in to match
+   their centred headers. */
+.stat-table td.numeric-col {
+  text-align: center;
+}
+
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.row-action {
+  display: inline-flex;
+  justify-content: center;
+  width: 14px;
+  cursor: pointer;
+}
 
 .table-bordered {
   border-spacing: 0;
@@ -639,7 +659,7 @@
 .equipment-input-container {
   display: flex;
   align-items: center;
-  justify-content: left;
+  justify-content: center;
   flex-wrap: nowrap;
   gap: 0.15rem;
 }

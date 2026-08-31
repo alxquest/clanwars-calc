@@ -38,6 +38,18 @@ Output lands in `dist/clanwars-calc/browser/`. The `build:pages` script passes
 `public/.nojekyll` stops Pages from running Jekyll over the build output (which would
 otherwise drop Angular's hashed `_`-prefixed files).
 
+## Stale caches after a redeploy
+
+The JS and CSS filenames are content-hashed, so browsers pick those up on their own. The
+file that does get cached is `index.html` — GitHub Pages serves it with a short max-age,
+so a returning visitor can boot a stale shell pointing at the previous bundle.
+
+`src/index.html` carries a small guard for that: on load it re-fetches `index.html` with
+`cache: 'no-store'` and compares the bundle name the server is serving against the one
+the page actually loaded. If they differ it reloads once, guarded by a `sessionStorage`
+flag so a stale CDN edge can't put the tab in a reload loop. Nobody has to be told to
+clear their cache.
+
 ## Formula sources
 
 The math is the **Clan Wars** server's, recovered by decompiling their own calculator

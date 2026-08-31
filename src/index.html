@@ -6,10 +6,66 @@
   <base href="./">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <app-root></app-root>
+  <script>
+    // GitHub Pages caches index.html, so after a redeploy a returning visitor can
+    // boot a stale shell that still points at the previous bundle. The JS and CSS
+    // filenames are content-hashed, so comparing the bundle this page loaded
+    // against the one the server is serving right now is enough to spot it.
+    // Reload at most once per tab so a genuinely stale CDN edge can't loop us.
+    (function () {
+      var RELOAD_FLAG = 'clanwars-calc:reloaded-for-update';
+
+      function bundleName(text) {
+        var match = text.match(/main-[A-Za-z0-9]+\.js/);
+        return match ? match[0] : null;
+      }
+
+      window.addEventListener('load', function () {
+        var loadedScript = document.querySelector('script[src*="main-"]');
+        if (!loadedScript || !window.fetch) {
+          return;
+        }
+
+        var loaded = bundleName(loadedScript.getAttribute('src') || '');
+        if (!loaded) {
+          return;
+        }
+
+        fetch('index.html?cachebust=' + Date.now(), { cache: 'no-store' })
+          .then(function (response) { return response.ok ? response.text() : null; })
+          .then(function (html) {
+            if (!html) {
+              return;
+            }
+
+            var deployed = bundleName(html);
+            if (!deployed || deployed === loaded) {
+              try { sessionStorage.removeItem(RELOAD_FLAG); } catch (e) {}
+              return;
+            }
+
+            try {
+              if (sessionStorage.getItem(RELOAD_FLAG)) {
+                return;
+              }
+              sessionStorage.setItem(RELOAD_FLAG, '1');
+            } catch (e) {
+              return;
+            }
+
+            location.reload();
+          })
+          .catch(function () {});
+      });
+    })();
+  </script>
 </body>
 </html>
