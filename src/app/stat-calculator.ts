@@ -2,6 +2,10 @@ export interface StatRow {
   name: string;
   base: number;
   equipmentBonus: number | null;
+  // Clan Wars' "PTM" box: a flat bonus that is added on top of the mod without
+  // being clamped by the gear allowance, so it can push a stat past its cap.
+  ptmBonus?: number | null;
+  modFromPtm?: number | null;
   mod: number | null;
   nextBaseIncreaseMod?: number | null;
   nextBaseIncreaseModIncrease?: number | null;

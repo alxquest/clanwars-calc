@@ -87,12 +87,20 @@ export class AppComponent implements OnInit {
 
   loadThemePreference(): void {
     const storedTheme = localStorage.getItem('preferredTheme');
-    this.isDarkMode = storedTheme === 'dark';
+    // Dark is the house style, so anything but an explicit 'light' stays dark.
+    this.isDarkMode = storedTheme !== 'light';
+    this.applyTheme();
   }
 
   toggleDarkMode(): void {
     this.isDarkMode = !this.isDarkMode;
     localStorage.setItem('preferredTheme', this.isDarkMode ? 'dark' : 'light');
+    this.applyTheme();
+  }
+
+  // The page background lives on <body>, outside this component's template.
+  private applyTheme(): void {
+    document.body.classList.toggle('dark-theme', this.isDarkMode);
   }
 
   loadBuilds(): void {
@@ -1381,6 +1389,7 @@ class Build {
         name: row.name,
         base: row.base,
         equipmentBonus: row.equipmentBonus,
+        ptmBonus: row.ptmBonus ?? 0,
         isHidden: row.isHidden ?? false,
         isPinned: row.isPinned ?? false
       })),
@@ -1422,6 +1431,7 @@ class Build {
           ...row,
           base: Number(incoming.base ?? row.base),
           equipmentBonus: Number(incoming.equipmentBonus ?? row.equipmentBonus),
+          ptmBonus: Number(incoming.ptmBonus ?? row.ptmBonus ?? 0),
           isHidden: incoming.isHidden ?? row.isHidden,
           isPinned: incoming.isPinned ?? row.isPinned
         };
@@ -2364,6 +2374,7 @@ class Build {
 
     row.base = Math.max(row.minBase, Math.min(row.maxBase, row.base));
     row.equipmentBonus = Math.max(0, row.equipmentBonus ?? 0);
+    row.ptmBonus = Math.max(0, row.ptmBonus ?? 0);
   }
 
   calculateExp(row: StatRow) {
@@ -2422,6 +2433,10 @@ class Build {
         
         // Clan Warrior points go straight onto the attribute.
         mod += cw;
+
+        // PTM is added raw - it is what takes a stat past the gear ceiling.
+        stat.modFromPtm = stat.ptmBonus ?? 0;
+        mod += stat.modFromPtm;
 
         stat.mod = mod;
 
@@ -2506,6 +2521,11 @@ class Build {
 
         mod += stat.modFromEquipment;
         mod += this.professionSkillBonus(stat);
+
+        stat.modFromPtm = stat.ptmBonus ?? 0;
+        mod += stat.modFromPtm;
+        nextBaseIncreaseMod += stat.modFromPtm;
+        lastBaseIncreaseMod += stat.modFromPtm;
 
         stat.mod = mod;
 

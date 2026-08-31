@@ -53,6 +53,10 @@ attribute mod = base + clanWarriorPoints + equipment + PTM + bless
 skill mod     = base + min(sum(parents) / 5, max(15, base · 2)) + equipment + PTM + profession
 ```
 
+`PTM` is Clan Wars' own third input next to base and equipment. It is added raw: it is
+not clamped by the gear allowance, so it is what takes a stat past its ceiling, and it
+costs no experience. `equipment` is clamped, `PTM` is not.
+
 Parent attributes match Astonia V's `skill[]` table with one exception: the **seyan** form
 keys every spell off `Int/Str/Wis` where the mage form uses `Int/Int/Wis`. Mages also add
 `clanWarriorPoints / 15` to Immunity, Fire, Lightning, Freeze, Pulse, Magic Shield,

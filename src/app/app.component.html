@@ -119,37 +119,25 @@
     <div *ngIf="selectedBuild">
 
       <section class="card-surface sticky-summary">
-        <div class="summary-grid">
-          <div class="summary-chip level-chip">
-            <span class="eyebrow">Level</span>
-            <div class="summary-value">{{ selectedBuild.totalLevel | number:'1.4-4' }}</div>
+        <div class="summary-strip">
+          <div class="summary-item level-item">
+            <span class="summary-label">Level</span>
+            <span class="summary-number">{{ selectedBuild.totalLevel | number:'1.4-4' }}</span>
           </div>
-          <div class="summary-chip">
-            <span class="eyebrow">Weapon</span>
-            <div class="summary-value">{{ selectedBuild.weaponValue }}</div>
+          <div class="summary-item">
+            <span class="summary-label">Weapon</span>
+            <span class="summary-number">{{ selectedBuild.weaponValue }}</span>
           </div>
-          <div class="summary-chip">
-            <span class="eyebrow">Armor</span>
-            <div class="summary-value">{{ selectedBuild.armorValue | number:'1.2-2' }}</div>
+          <div class="summary-item">
+            <span class="summary-label">Armor</span>
+            <span class="summary-number">{{ selectedBuild.armorValue | number:'1.2-2' }}</span>
           </div>
-          <div class="summary-chip speed-chip">
-            <span class="eyebrow">Speed</span>
-            <div class="summary-value speed-with-tooltip">
+          <div class="summary-item speed-chip">
+            <span class="summary-label">Speed</span>
+            <span class="summary-number speed-with-tooltip">
               {{ selectedBuild.speed }}
               <i class="fas fa-info-circle speed-tooltip-icon" aria-hidden="true"></i>
-            </div>
-            <ng-template #noMoreBreaks>
-              <span class="muted">At fastest listed break</span>
-            </ng-template>
-            <div class="speed-inline-breaks">
-              <div class="speed-inline-row" *ngFor="let entry of getNextSpeedBreaks()">
-                <div class="speed-inline-label">{{ entry.label }}</div>
-                <div class="speed-inline-value" *ngIf="entry.nextBreak; else noMoreBreaks">
-                  <strong>{{ entry.nextBreak.speed }}</strong>
-                  <span class="muted">({{ entry.nextBreak.tick }}t)</span>
-                </div>
-              </div>
-            </div>
+            </span>
             <div class="speed-tooltip">
               <div class="tooltip-title">
                 <div class="tooltip-heading">
@@ -227,37 +215,37 @@
               </div>
             </div>
           </div>
-          <div class="summary-chip">
-            <span class="eyebrow">Offense</span>
-            <div class="summary-value">{{ selectedBuild.offense }}</div>
+          <div class="summary-item">
+            <span class="summary-label">Offense</span>
+            <span class="summary-number">{{ selectedBuild.offense }}</span>
           </div>
-          <div class="summary-chip">
-            <span class="eyebrow">Defense</span>
-            <div class="summary-value">{{ selectedBuild.defense }}</div>
+          <div class="summary-item">
+            <span class="summary-label">Defense</span>
+            <span class="summary-number">{{ selectedBuild.defense }}</span>
           </div>
-          <div class="summary-chip" *ngIf="selectedBuild.selectedClass !== 'Mage'">
-            <span class="eyebrow">Surround off.</span>
-            <div class="summary-value">{{ selectedBuild.surroundOffense }}</div>
+          <div class="summary-item" *ngIf="selectedBuild.selectedClass !== 'Mage'">
+            <span class="summary-label">Surround</span>
+            <span class="summary-number">{{ selectedBuild.surroundOffense }}</span>
           </div>
-          <div class="summary-chip">
-            <span class="eyebrow">Immunity</span>
-            <div class="summary-value">{{ selectedBuild.immunity }}</div>
+          <div class="summary-item">
+            <span class="summary-label">Immunity</span>
+            <span class="summary-number">{{ selectedBuild.immunity }}</span>
           </div>
-          <div class="summary-chip" *ngIf="isAboveBase(Stats.WARCRY)">
-            <span class="eyebrow">Warcry</span>
-            <div class="summary-value">{{ selectedBuild.warcry }}</div>
+          <div class="summary-item" *ngIf="isAboveBase(Stats.WARCRY)">
+            <span class="summary-label">Warcry</span>
+            <span class="summary-number">{{ selectedBuild.warcry }}</span>
           </div>
-          <div class="summary-chip" *ngIf="isAboveBase(Stats.LIGHTNING)">
-            <span class="eyebrow">Lightning</span>
-            <div class="summary-value">{{ selectedBuild.lightning }}</div>
+          <div class="summary-item" *ngIf="isAboveBase(Stats.LIGHTNING)">
+            <span class="summary-label">Lightning</span>
+            <span class="summary-number">{{ selectedBuild.lightning }}</span>
           </div>
-          <div class="summary-chip" *ngIf="isAboveBase(Stats.FREEZE)">
-            <span class="eyebrow">Freeze</span>
-            <div class="summary-value">{{ selectedBuild.freeze }}</div>
+          <div class="summary-item" *ngIf="isAboveBase(Stats.FREEZE)">
+            <span class="summary-label">Freeze</span>
+            <span class="summary-number">{{ selectedBuild.freeze }}</span>
           </div>
-          <div class="summary-chip" *ngIf="isAboveBase(Stats.FIRE)">
-            <span class="eyebrow">Fire</span>
-            <div class="summary-value">{{ selectedBuild.fire }}</div>
+          <div class="summary-item" *ngIf="isAboveBase(Stats.FIRE)">
+            <span class="summary-label">Fire</span>
+            <span class="summary-number">{{ selectedBuild.fire }}</span>
           </div>
         </div>
       </section>
@@ -281,11 +269,12 @@
                 <th></th>
                 <th>Base</th>
                 <th>Equipment</th>
+                <th>+PTM</th>
                 <th>Mod</th>
               </thead>
               <tbody>
                 <ng-container *ngFor="let stat of displayStats">
-                  <tr *ngIf="!stat" class="spacer-row"><td colspan="4"></td></tr>
+                  <tr *ngIf="!stat" class="spacer-row"><td colspan="5"></td></tr>
                   <ng-container *ngIf="stat as statKey">
                     <tr [hidden]="!selectedBuild.stats[stat] || !selectedBuild.isVisible( selectedBuild.stats[stat]) || selectedBuild.stats[stat].isHidden === true || selectedBuild.stats[stat] == null">
                       <td data-label="Actions">
@@ -312,13 +301,19 @@
                           <input class="number-input" type="number" oninput="this.value = this.value.replace(/[^0-9]/g, '');" [min]="0" [(ngModel)]="selectedBuild.stats[stat].equipmentBonus" (click)="selectText($event)"  [ngClass]="{'text-red': (selectedBuild.stats[stat].equipmentBonus || 0) >= (selectedBuild.stats[stat].maxingEquipmentBonus || 0)}" [disabled]="selectedBuild.maxingEquipment" (change)="selectedBuild.calculateMods()"  /> / {{selectedBuild.stats[stat].maxingEquipmentBonus}}
                         </span>
                       </td>
+                      <td data-label="+PTM">
+                        <span class="ptm-input-container" *ngIf="selectedBuild.stats[stat].modDisabled !== true">
+                          <input class="number-input" type="number" oninput="this.value = this.value.replace(/[^0-9]/g, '');" [min]="0" [(ngModel)]="selectedBuild.stats[stat].ptmBonus" (click)="selectText($event)" (change)="selectedBuild.calculateAllXp()" />
+                        </span>
+                      </td>
                       <td data-label="Mod">
                         <div class="mod-display" (click)="selectedBuild.toggleModDetails(selectedBuild.stats[stat])" *ngIf="selectedBuild.stats[stat].modDisabled !== true" (mouseover)="selectedBuild.showModDetails(selectedBuild.stats[stat])" (mouseout)="selectedBuild.hideModDetails(selectedBuild.stats[stat])">
                           {{ selectedBuild.stats[stat].mod }}
                           <div class="mod-details" *ngIf="selectedBuild.stats[stat].showDetails">
                             Base: {{ selectedBuild.stats[stat].base }} <br/>
                             Attributes: {{ selectedBuild.stats[stat].modFromAttributes || 0 }} <br/>
-                            Equipment: {{ selectedBuild.stats[stat].modFromEquipment || 0 }}
+                            Equipment: {{ selectedBuild.stats[stat].modFromEquipment || 0 }} <br/>
+                            PTM: {{ selectedBuild.stats[stat].modFromPtm || 0 }}
                           </div>
                         </div>
                       </td>
