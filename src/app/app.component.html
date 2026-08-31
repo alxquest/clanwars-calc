@@ -1,0 +1,819 @@
+<div class="app-root" [class.dark-mode]="isDarkMode">
+  <div class="page-shell">
+    <header class="hero-card">
+      <div class="brand-block">
+        <div class="logo-badge">CW</div>
+        <div>
+          <p class="eyebrow">Clan Wars</p>
+          <h1>Plan modern builds faster</h1>
+          <p class="subtitle">Stats, speed and professions on Clan Wars' own experience curve.</p>
+        </div>
+      </div>
+      <div class="hero-meta">
+        <label class="theme-toggle">
+          <input type="checkbox" [checked]="isDarkMode" (change)="toggleDarkMode()" />
+          <span>{{ isDarkMode ? 'Dark mode' : 'Light mode' }}</span>
+        </label>
+        <div class="hero-metric-grid" *ngIf="selectedBuild">
+          <div class="metric-card">
+            <p class="eyebrow">Current build</p>
+            <strong>{{ selectedBuild.name }}</strong>
+            <span class="chip" [ngClass]="{
+              'warrior-chip': selectedBuild.selectedClass === 'Warrior',
+              'mage-chip': selectedBuild.selectedClass === 'Mage',
+              'seyan-chip': selectedBuild.selectedClass === 'Seyan'
+            }">{{ selectedBuild.selectedClass }}</span>
+          </div>
+          <div class="metric-card accent">
+            <p class="eyebrow">Total level</p>
+            <strong>{{ selectedBuild.totalLevel | number:'1.5-5' }}</strong>
+            <span class="muted">Including current modifiers</span>
+          </div>
+          <div class="metric-card">
+            <p class="eyebrow">Total XP</p>
+            <strong>{{ selectedBuild.totalExp | number }}</strong>
+            <span class="muted">Across stats & professions</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="build-switcher card-surface">
+      <div class="toolbar-head">
+        <div class="toolbar-title">
+          <span class="eyebrow">Builds</span>
+          <h3>Switch between setups</h3>
+        </div>
+        <div class="toolbar-actions">
+          <button class="icon-button" type="button" (click)="toggleMobileMenu()" aria-label="Toggle build menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <div class="action-group">
+            <button class="ghost-button" type="button" (click)="cloneSelectedBuild(); isMobileMenuOpen = false">Clone</button>
+            <button class="ghost-button" type="button" (click)="openLoadModal(); isMobileMenuOpen = false">Load</button>
+            <button class="primary-button" type="button" (click)="saveBuilds(); isMobileMenuOpen = false">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs-wrapper" [class.mobile-open]="isMobileMenuOpen">
+        <div class="tabs-scroll" (click)="isMobileMenuOpen = false">
+          <div class="tabs">
+            <div
+              *ngFor="let build of builds"
+              class="tab"
+              [ngClass]="{
+                'warrior-tab': build.selectedClass === 'Warrior',
+                'mage-tab': build.selectedClass === 'Mage',
+                'seyan-tab': build.selectedClass === 'Seyan'
+              }"
+              (click)="selectBuild(build)"
+              [class.selected]="build === selectedBuild"
+            >
+              <div class="tab-title">{{ build.name }}</div>
+              <span class="chip" [ngClass]="{
+                'warrior-chip': build.selectedClass === 'Warrior',
+                'mage-chip': build.selectedClass === 'Mage',
+                'seyan-chip': build.selectedClass === 'Seyan'
+              }">{{ build.selectedClass }}</span>
+            </div>
+            <div class="tab add-tab" (click)="addNewBuild()">+ Add build</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="modal" [class.show]="isLoadModalOpen">
+      <div class="modal-content">
+        <span class="close" (click)="closeLoadModal()">&times;</span>
+        <h3>Load Builds</h3>
+        <p class="muted">Import your saved presets directly from any supported format.</p>
+        <select id="buildType" [(ngModel)]="selectedBuildType">
+          <option value="AVcalc">Astonia V (.mage.json, .seyan.json, .warrior.json)</option>
+          <option value="Resurgence">Resurgence (.json)</option>
+          <option value="A3Res">A3Res (.mage, .seyan, .warrior)</option>
+          <option value="Val">Val/OW Stat Calc (.mag, .sey, .war)</option>
+          <option value="Widget">Widget (no file extension)</option>
+        </select>
+        <div 
+          class="drop-zone" 
+          (dragover)="onDragOver($event)" 
+          (drop)="onDrop($event)"
+          (click)="triggerFileInput()"
+        >
+          Drag and drop your files here, or click to select files
+          <input 
+            type="file" 
+            multiple 
+            (change)="loadFiles($event)" 
+            style="display:none;" 
+            id="fileInput"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" [class.show]="isDeleteModalOpen">
+      <div class="modal-content">
+        <span class="close" (click)="closeDeleteModal()">&times;</span>
+        <h3>Confirm Deletion</h3>
+        <p>Are you sure you want to delete the build "{{ buildToDelete?.name }}"?</p>
+        <div class="modal-actions">
+          <button class="primary-button" (click)="confirmDelete()">Yes, Delete</button>
+          <button class="ghost-button" (click)="closeDeleteModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="selectedBuild">
+
+      <section class="card-surface sticky-summary">
+        <div class="summary-grid">
+          <div class="summary-chip level-chip">
+            <span class="eyebrow">Level</span>
+            <div class="summary-value">{{ selectedBuild.totalLevel | number:'1.4-4' }}</div>
+          </div>
+          <div class="summary-chip">
+            <span class="eyebrow">Weapon</span>
+            <div class="summary-value">{{ selectedBuild.weaponValue }}</div>
+          </div>
+          <div class="summary-chip">
+            <span class="eyebrow">Armor</span>
+            <div class="summary-value">{{ selectedBuild.armorValue | number:'1.2-2' }}</div>
+          </div>
+          <div class="summary-chip speed-chip">
+            <span class="eyebrow">Speed</span>
+            <div class="summary-value speed-with-tooltip">
+              {{ selectedBuild.speed }}
+              <i class="fas fa-info-circle speed-tooltip-icon" aria-hidden="true"></i>
+            </div>
+            <ng-template #noMoreBreaks>
+              <span class="muted">At fastest listed break</span>
+            </ng-template>
+            <div class="speed-inline-breaks">
+              <div class="speed-inline-row" *ngFor="let entry of getNextSpeedBreaks()">
+                <div class="speed-inline-label">{{ entry.label }}</div>
+                <div class="speed-inline-value" *ngIf="entry.nextBreak; else noMoreBreaks">
+                  <strong>{{ entry.nextBreak.speed }}</strong>
+                  <span class="muted">({{ entry.nextBreak.tick }}t)</span>
+                </div>
+              </div>
+            </div>
+            <div class="speed-tooltip">
+              <div class="tooltip-title">
+                <div class="tooltip-heading">
+                  <span class="tooltip-kicker">Next speed breaks</span>
+                  <span class="mode-chip">{{ selectedBuild.speedMode }}</span>
+                </div>
+                <p class="muted tooltip-helper">Faster speeds reduce the ticks required for actions.</p>
+              </div>
+              <ng-template #speedCapLabel>
+                <span class="muted end-of-scale">At fastest listed break</span>
+              </ng-template>
+              <div class="speed-break-row">
+                <div class="icon-group">
+                  <span class="icon-chip"><i class="fas fa-bullhorn" aria-hidden="true"></i></span>
+                  <span class="icon-chip"><i class="fas fa-up-down-left-right" aria-hidden="true"></i></span>
+                  <span class="icon-chip"><i class="fas fa-sword" aria-hidden="true"></i></span>
+                </div>
+                <div class="speed-break-content">
+                  <div class="speed-break-heading">
+                    <div class="speed-break-label">Cast 2 / Move 1 / Melee</div>
+                    <div class="tick-badge" *ngIf="getNextSpeedBreak(12)">
+                      {{ getNextSpeedBreak(12)?.tick }}t
+                    </div>
+                  </div>
+                  <div class="speed-break-description">
+                    Cast 2: Bless self, Heal self, Freeze, Pulse, Firering, Lightning Flash, Magic Shield, Warcry
+                  </div>
+                  <div class="speed-break-description">
+                    Move 1 (cardinal) &bull; Melee
+                  </div>
+                  <div class="speed-break-value" *ngIf="getNextSpeedBreak(12); else speedCapLabel">
+                    <strong>{{ getNextSpeedBreak(12)?.speed }}</strong>
+                    <span class="muted">speed</span>
+                  </div>
+                </div>
+              </div>
+              <div class="speed-break-row">
+                <div class="icon-group">
+                  <span class="icon-chip"><i class="fas fa-up-down-left-right rotate-45" aria-hidden="true"></i></span>
+                  <span class="icon-chip"><i class="fas fa-hand-paper" aria-hidden="true"></i></span>
+                </div>
+                <div class="speed-break-content">
+                  <div class="speed-break-heading">
+                    <div class="speed-break-label">Move 2 / Use</div>
+                    <div class="tick-badge" *ngIf="getNextSpeedBreak(8)">
+                      {{ getNextSpeedBreak(8)?.tick }}t
+                    </div>
+                  </div>
+                  <div class="speed-break-description">Move 2 (diagonal) &bull; Use</div>
+                  <div class="speed-break-value" *ngIf="getNextSpeedBreak(8); else speedCapLabel">
+                    <strong>{{ getNextSpeedBreak(8)?.speed }}</strong>
+                    <span class="muted">speed</span>
+                  </div>
+                </div>
+              </div>
+              <div class="speed-break-row">
+                <div class="icon-group">
+                  <span class="icon-chip"><i class="fas fa-bolt" aria-hidden="true"></i></span>
+                </div>
+                <div class="speed-break-content">
+                  <div class="speed-break-heading">
+                    <div class="speed-break-label">Cast 1 (LB)</div>
+                    <div class="tick-badge" *ngIf="getNextSpeedBreak(6)">
+                      {{ getNextSpeedBreak(6)?.tick }}t
+                    </div>
+                  </div>
+                  <div class="speed-break-description">
+                    Cast 1: Bless someone, Heal someone, Fireball, Lightning Ball
+                  </div>
+                  <div class="speed-break-value" *ngIf="getNextSpeedBreak(6); else speedCapLabel">
+                    <strong>{{ getNextSpeedBreak(6)?.speed }}</strong>
+                    <span class="muted">speed</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="summary-chip">
+            <span class="eyebrow">Offense</span>
+            <div class="summary-value">{{ selectedBuild.offense }}</div>
+          </div>
+          <div class="summary-chip">
+            <span class="eyebrow">Defense</span>
+            <div class="summary-value">{{ selectedBuild.defense }}</div>
+          </div>
+          <div class="summary-chip" *ngIf="selectedBuild.selectedClass !== 'Mage'">
+            <span class="eyebrow">Surround off.</span>
+            <div class="summary-value">{{ selectedBuild.surroundOffense }}</div>
+          </div>
+          <div class="summary-chip">
+            <span class="eyebrow">Immunity</span>
+            <div class="summary-value">{{ selectedBuild.immunity }}</div>
+          </div>
+          <div class="summary-chip" *ngIf="isAboveBase(Stats.WARCRY)">
+            <span class="eyebrow">Warcry</span>
+            <div class="summary-value">{{ selectedBuild.warcry }}</div>
+          </div>
+          <div class="summary-chip" *ngIf="isAboveBase(Stats.LIGHTNING)">
+            <span class="eyebrow">Lightning</span>
+            <div class="summary-value">{{ selectedBuild.lightning }}</div>
+          </div>
+          <div class="summary-chip" *ngIf="isAboveBase(Stats.FREEZE)">
+            <span class="eyebrow">Freeze</span>
+            <div class="summary-value">{{ selectedBuild.freeze }}</div>
+          </div>
+          <div class="summary-chip" *ngIf="isAboveBase(Stats.FIRE)">
+            <span class="eyebrow">Fire</span>
+            <div class="summary-value">{{ selectedBuild.fire }}</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="content-grid">
+        <section class="card-surface stat-card">
+          <div class="card-header">
+            <div>
+              <span class="eyebrow">Stats</span>
+              <h2>Allocate and inspect modifiers</h2>
+              <p class="muted">Pin, hide, or tweak any attribute while keeping the XP tally in view.</p>
+            </div>
+            <div class="header-actions">
+              <button class="ghost-button" type="button" (click)="openHiddenRowsModal()">Manage hidden rows</button>
+            </div>
+          </div>
+          <div class="table-scroll elevated">
+            <table class="stat-table stacked-table">
+              <thead>
+                <th></th>
+                <th></th>
+                <th>Base</th>
+                <th>Equipment</th>
+                <th>Mod</th>
+              </thead>
+              <tbody>
+                <ng-container *ngFor="let stat of displayStats">
+                  <tr *ngIf="!stat" class="spacer-row"><td colspan="4"></td></tr>
+                  <ng-container *ngIf="stat as statKey">
+                    <tr [hidden]="!selectedBuild.stats[stat] || !selectedBuild.isVisible( selectedBuild.stats[stat]) || selectedBuild.stats[stat].isHidden === true || selectedBuild.stats[stat] == null">
+                      <td data-label="Actions">
+                        <a (click)="selectedBuild.stats[stat].isPinned = !(selectedBuild.stats[stat].isPinned ?? false)">
+                          <i style="width: 14px;" [class]="selectedBuild.stats[stat].isPinned == true ? 'fas fa-thumbtack-slash' : 'fas fa-thumbtack'"></i>
+                        </a>
+                        &nbsp;
+                        <a style="width: 14px;" (click)="selectedBuild.stats[stat].isHidden = !(selectedBuild.stats[stat].isHidden ?? false)">
+                          <i class="fas fa-eye-slash"></i>
+                        </a>
+                      </td>
+                      <td data-label="Stat">
+                        {{  selectedBuild.stats[stat].name }}
+                      </td>
+                      <td class="base-value" data-label="Base">
+                        <div class="base-input-container">
+                          <button class="decrement-btn" [disabled]=" selectedBuild.stats[stat].base <=  selectedBuild.stats[stat].minBase" (click)=" selectedBuild.decrement( selectedBuild.stats[stat]);  selectedBuild.calculateAllXp()">-</button>
+                          <input class="number-input" [class.good-base]="selectedBuild.stats[stat].nextBaseIncreaseModIncrease == 1 && selectedBuild.stats[stat].equipmentDisabled !== true" [class.bad-base]="selectedBuild.stats[stat].base > selectedBuild.stats[stat].minBase && selectedBuild.stats[stat].equipmentDisabled !== true && selectedBuild.stats[stat].lastBaseIncreaseModIncrease == 1" type="number" oninput="this.value = this.value.replace(/[^0-9]/g, '');" [(ngModel)]="selectedBuild.stats[stat].base" (click)="selectText($event)"  [min]="selectedBuild.stats[stat].minBase" [max]="selectedBuild.stats[stat].maxBase"  (change)="selectedBuild.calculateAllXp()"/>
+                          <button class="increment-btn" [disabled]="selectedBuild.stats[stat].base >= selectedBuild.stats[stat].maxBase" (click)="selectedBuild.increment(selectedBuild.stats[stat]); selectedBuild.calculateAllXp()">+</button>
+                        </div>
+                      </td>
+                      <td data-label="Equipment">
+                        <span class="equipment-input-container" *ngIf="selectedBuild.stats[stat].equipmentDisabled !== true">
+                          <input class="number-input" type="number" oninput="this.value = this.value.replace(/[^0-9]/g, '');" [min]="0" [(ngModel)]="selectedBuild.stats[stat].equipmentBonus" (click)="selectText($event)"  [ngClass]="{'text-red': (selectedBuild.stats[stat].equipmentBonus || 0) >= (selectedBuild.stats[stat].maxingEquipmentBonus || 0)}" [disabled]="selectedBuild.maxingEquipment" (change)="selectedBuild.calculateMods()"  /> / {{selectedBuild.stats[stat].maxingEquipmentBonus}}
+                        </span>
+                      </td>
+                      <td data-label="Mod">
+                        <div class="mod-display" (click)="selectedBuild.toggleModDetails(selectedBuild.stats[stat])" *ngIf="selectedBuild.stats[stat].modDisabled !== true" (mouseover)="selectedBuild.showModDetails(selectedBuild.stats[stat])" (mouseout)="selectedBuild.hideModDetails(selectedBuild.stats[stat])">
+                          {{ selectedBuild.stats[stat].mod }}
+                          <div class="mod-details" *ngIf="selectedBuild.stats[stat].showDetails">
+                            Base: {{ selectedBuild.stats[stat].base }} <br/>
+                            Attributes: {{ selectedBuild.stats[stat].modFromAttributes || 0 }} <br/>
+                            Equipment: {{ selectedBuild.stats[stat].modFromEquipment || 0 }}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </ng-container>
+                </ng-container>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="modal" [class.show]="isManageHiddenRowsModalOpen">
+            <div class="modal-content">
+              <span class="close" (click)="closeHiddenRowsModal()">&times;</span>
+              <h3>Manage Hidden Rows</h3>
+              <p class="muted">Click the icon to unhide a row.</p>
+              <div *ngFor="let stat of selectedBuild.statRows" [hidden]="stat.isHidden != true">
+                <div>
+                  <a style="width: 14px;" (click)="stat.isHidden = false">
+                    <i class="fas fa-eye"></i>
+                  </a> {{stat.name}}
+                </div>
+              </div>
+              <br/>
+              <div class="modal-actions">
+                <button class="ghost-button" (click)="closeHiddenRowsModal()">Close</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="side-stack">
+          <section class="card-surface build-card">
+            <div class="card-header">
+              <div>
+                <span class="eyebrow">Build setup</span>
+                <h3>Identity & rules</h3>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label>Build name</label>
+              <div class="input-row">
+                <input class="text-input" [(ngModel)]="selectedBuild.name" />
+                <button class="ghost-button danger" type="button" (click)="openDeleteModal(selectedBuild)">Delete</button>
+              </div>
+
+              <label>Shareable build link</label>
+              <div class="input-row share-row">
+                <input class="text-input share-input" [value]="currentBuildShareUrl" readonly (click)="selectText($event)" />
+                <button class="ghost-button" type="button" (click)="copyBuildShareUrl()">Copy</button>
+              </div>
+              <p class="muted helper-text">Open this link in a new tab to load the build instantly.</p>
+              <p class="muted success-text" *ngIf="copyConfirmation">{{ copyConfirmation }}</p>
+
+              <label for="class-select">Choose a class</label>
+              <select id="class-select" [(ngModel)]="selectedBuild.selectedClass" (change)="selectedBuild.calculateAllXp()">
+                <option value="Seyan">Seyan</option>
+                <option value="Mage">Mage</option>
+                <option value="Warrior">Warrior</option>
+              </select>
+
+              <div class="toggle-grid">
+                <label class="checkbox-pill">
+                  <input type="checkbox" id="hardcore-checkbox" [(ngModel)]="selectedBuild.hardcore" (change)="selectedBuild.calculateAllXp()" />
+                  <span>Hardcore</span>
+                </label>
+                <label class="checkbox-pill">
+                  <input type="checkbox" id="unarched-checkbox" [(ngModel)]="selectedBuild.unarched" (change)="selectedBuild.calculateAllXp()" />
+                  <span>Unarched</span>
+                </label>
+                <label class="checkbox-pill">
+                  <input type="checkbox" id="maxing-equipment-checkbox" [(ngModel)]="selectedBuild.maxingEquipment" (change)="selectedBuild.calculateAllXp()" />
+                  <span>Maxing equipment</span>
+                </label>
+                <label class="checkbox-pill">
+                  <input type="checkbox" id="blessed-checkbox" [(ngModel)]="selectedBuild.blessed" (change)="selectedBuild.calculateAllXp()" />
+                  <span>Blessed</span>
+                </label>
+                <label class="checkbox-pill">
+                  <input type="checkbox" id="maxing-bless-checkbox" [(ngModel)]="selectedBuild.maxingBless" (change)="selectedBuild.calculateAllXp()" />
+                  <span>Maxing bless</span>
+                </label>
+                <label class="checkbox-pill">
+                  <input type="checkbox" id="thief-mode-checkbox" [(ngModel)]="selectedBuild.thiefMode" (change)="selectedBuild.calculateAllXp()" />
+                  <span>Thief mode</span>
+                </label>
+                <label class="checkbox-pill" *ngIf="selectedBuild.selectedClass !== 'Mage'">
+                  <input type="checkbox" id="tactics-checkbox" [(ngModel)]="selectedBuild.tacticsActive" (change)="selectedBuild.calculateAllXp()" />
+                  <span>Tactics up</span>
+                </label>
+                <label class="checkbox-pill" *ngIf="selectedBuild.selectedClass === 'Warrior'">
+                  <input type="checkbox" id="rage-checkbox" [(ngModel)]="selectedBuild.rageActive" (change)="selectedBuild.calculateAllXp()" />
+                  <span>Rage up</span>
+                </label>
+              </div>
+
+              <div class="radio-group">
+                <p class="muted">Speed mode</p>
+                <div class="pill-group">
+                  <label class="pill-option">
+                    <input type="radio" id="fast-mode-radio" [(ngModel)]="selectedBuild.speedMode" value="Fast" />
+                    <span>Fast</span>
+                  </label>
+                  <label class="pill-option">
+                    <input type="radio" id="normal-mode-radio" [(ngModel)]="selectedBuild.speedMode" value="Normal" />
+                    <span>Normal</span>
+                  </label>
+                  <label class="pill-option">
+                    <input type="radio" id="stealth-mode-radio" [(ngModel)]="selectedBuild.speedMode" value="Stealth" />
+                    <span>Stealth</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="optimize-block">
+                <p class="muted">Warcry optimizer</p>
+                <div class="input-row optimizer-row">
+                  <label class="stacked-input">
+                    <span class="input-label">Target level</span>
+                    <input class="text-input" type="number" min="1" [(ngModel)]="warcryTargetLevel" (ngModelChange)="warcryTargetLevel = $event ? +$event : 1" />
+                  </label>
+                  <label class="stacked-input">
+                    <span class="input-label">Max warcry (optional)</span>
+                    <input class="text-input" type="number" min="0" placeholder="Cap value (0 = ignore)" [(ngModel)]="warcryMaxValue" (ngModelChange)="warcryMaxValue = $event ? +$event : 0" />
+                  </label>
+                  <button class="primary-button" type="button" (click)="optimizeWarcry()" [disabled]="isOptimizingWarcry">
+                    {{ isOptimizingWarcry ? 'Optimizing…' : 'Optimize warcry' }}
+                  </button>
+                </div>
+                <p class="muted helper-text">Optional max warcry cap. Current cap: {{ warcryMaxValue || 0 }}. Enter 0 to ignore.</p>
+                <p class="muted helper-text" *ngIf="isOptimizingWarcry || warcryExploredCount > 0">
+                  Explored {{ warcryExploredCount | number }} candidates. Highest level seen {{ warcryHighestLevelSeen | number:'1.2-2' }}. Best warcry {{ warcryBestWarcry }}.
+                </p>
+                <p class="muted helper-text" *ngIf="warcryOptimizationNote">{{ warcryOptimizationNote }}</p>
+              </div>
+
+              <div class="optimize-block">
+                <p class="muted">Multi-stat optimizer</p>
+                <div class="input-row optimizer-row">
+                  <label class="stacked-input">
+                    <span class="input-label">Target level</span>
+                    <input class="text-input" type="number" min="1" [(ngModel)]="optimizationTargetLevel" (ngModelChange)="optimizationTargetLevel = $event ? +$event : 1" />
+                  </label>
+                  <label class="stacked-input">
+                    <span class="input-label">Reserve % of level</span>
+                    <input class="text-input" type="number" min="0" max="99" [(ngModel)]="optimizationReservePercent" (ngModelChange)="optimizationReservePercent = $event ? +$event : 0" />
+                  </label>
+                  <label class="stacked-input">
+                    <span class="input-label">Min stat</span>
+                    <select class="text-input" [(ngModel)]="optimizationMinMetric">
+                      <option [ngValue]="''">None</option>
+                      <option [ngValue]="'offense'">Offense</option>
+                      <option [ngValue]="'defense'">Defense</option>
+                      <option [ngValue]="'immunity'">Immunity</option>
+                      <option [ngValue]="'freeze'">Freeze</option>
+                      <option [ngValue]="'lightning'">Lightning</option>
+                      <option [ngValue]="'fire'">Fire</option>
+                      <option [ngValue]="'warcry'">Warcry</option>
+                    </select>
+                  </label>
+                  <label class="stacked-input">
+                    <span class="input-label">Min value</span>
+                    <input class="text-input" type="number" min="0" [(ngModel)]="optimizationMinValue" (ngModelChange)="optimizationMinValue = $event ? +$event : 0" />
+                  </label>
+                  <label class="stacked-input">
+                    <span class="input-label">Max warcry (optional)</span>
+                    <input class="text-input" type="number" min="0" placeholder="Cap value (0 = ignore)" [(ngModel)]="optimizationMaxWarcry" (ngModelChange)="optimizationMaxWarcry = $event ? +$event : 0" />
+                  </label>
+                </div>
+                <div class="weights-grid">
+                  <div class="weight-row" *ngFor="let weight of optimizationWeights">
+                    <label>{{ weight.label }}</label>
+                    <input class="text-input" type="number" step="0.1" [(ngModel)]="weight.weight" />
+                  </div>
+                </div>
+                <button class="primary-button" type="button" (click)="optimizeStats()" [disabled]="isOptimizingStats">
+                  {{ isOptimizingStats ? 'Optimizing…' : 'Optimize stats' }}
+                </button>
+                <p class="muted helper-text">Use weights to shape the build score. Reserve percent keeps XP unused for other manual tweaks.</p>
+                <p class="muted helper-text" *ngIf="isOptimizingStats || optimizationExploredCount > 0">
+                  Explored {{ optimizationExploredCount | number }} candidates. Highest level seen {{ optimizationHighestLevelSeen | number:'1.2-2' }}. Best score {{ optimizationBestScore | number:'1.2-2' }}.
+                </p>
+                <p class="muted helper-text" *ngIf="optimizationNote">{{ optimizationNote }}</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="card-surface snapshot-card">
+            <div class="card-header">
+              <div>
+                <span class="eyebrow">Comparison</span>
+                <h3>Cross-build overview</h3>
+              </div>
+            </div>
+            <div class="table-scroll compact-scroll">
+              <table class="table-bordered compact-table comparison-table">
+                <tr>
+                  <td>Stat</td>
+                  <td>{{ selectedBuild.name }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.name }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Level</td>
+                  <td>{{ selectedBuild.totalLevel | number:'1.2-2' }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.totalLevel | number:'1.2-2' }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Weapon Value</td>
+                  <td>{{ selectedBuild.weaponValue }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.weaponValue }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Armor Value</td>
+                  <td>{{ selectedBuild.armorValue | number:'1.2-2'}}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.armorValue | number:'1.2-2'}}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Speed</td>
+                  <td>{{ selectedBuild.speed }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.speed}}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Frozen Speed <i class="fas fa-right-to-bracket"></i></td>
+                  <td>{{ selectedBuild.calculateFrozenSpeed(selectedBuild) }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ selectedBuild.calculateFrozenSpeed(build) }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Frozen Speed <i class="fas fa-right-from-bracket"></i></td>
+                  <td>{{ selectedBuild.calculateFrozenSpeed(selectedBuild) }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.calculateFrozenSpeed(selectedBuild) }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Warcried Speed <i class="fas fa-right-to-bracket"></i></td>
+                  <td>{{ selectedBuild.calculateWarcriedSpeed(selectedBuild) }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ selectedBuild.calculateWarcriedSpeed(build) }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Warcried Speed <i class="fas fa-right-from-bracket"></i></td>
+                  <td>{{ selectedBuild.calculateWarcriedSpeed(selectedBuild) }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.calculateWarcriedSpeed(selectedBuild) }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Offense</td>
+                  <td>{{ selectedBuild.offense }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.offense }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Defense</td>
+                  <td>{{ selectedBuild.defense }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.defense }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Surround Offense</td>
+                  <td>{{ selectedBuild.surroundOffense }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.surroundOffense }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Warcry</td>
+                  <td>{{ selectedBuild.warcry }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.warcry }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Freeze</td>
+                  <td>{{ selectedBuild.freeze }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.freeze }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Lightning</td>
+                  <td>{{ selectedBuild.lightning }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.lightning }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Fire</td>
+                  <td>{{ selectedBuild.fire }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.fire }}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Immunity</td>
+                  <td>{{ selectedBuild.immunity }}</td>
+                  <td *ngFor="let build of selectedBuild.comparisonBuilds">
+                    {{ build.immunity }}
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <div class="compare-list">
+              <p class="muted">Compare builds</p>
+              <div class="compare-grid">
+                <div *ngFor="let build of builds" class="compare-row">
+                  <input style="height:10px" type="checkbox" [checked]="selectedBuild.isComparing(build)" (click)="selectedBuild.toggleComparison(build); $event.stopPropagation();" /> {{build.name}}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card-surface">
+            <div class="card-header">
+              <div>
+                <span class="eyebrow">Professions</span>
+                <h3>Allocate points</h3>
+              </div>
+            </div>
+            <table class="prof-table stacked-table">
+              <tr *ngFor="let row of selectedBuild.profRows">
+                <td data-label="Profession">{{ row.name }}</td>
+                <td data-label="Points">
+                  <div class="base-input-container">
+                    <button class="decrement-btn" [disabled]="row.points < row.basePoints"  (click)="selectedBuild.decrementProf(row); selectedBuild.calculateAllXp()">-</button>
+                    <input class="number-input" type="number" [(ngModel)]="row.points" [min]="0" [max]="row.max"  (change)="selectedBuild.calculateAllXp()"/>
+                    <button class="increment-btn" [disabled]="row.points >= row.max" (click)="selectedBuild.incrementProf(row); selectedBuild.calculateAllXp()">+</button>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </section>
+
+          <section class="card-surface">
+            <div class="card-header">
+              <div>
+                <span class="eyebrow">Encounter inputs</span>
+                <h3>Freeze & warcry testing</h3>
+              </div>
+            </div>
+            <table class="table-bordered compact-table">
+              <tr>
+                <td>Frozen Speed:</td>
+                <td><input class="text-input" [(ngModel)]="selectedBuild.frozenSpeed" /> </td>
+                <td>Enemy Freeze: {{selectedBuild.calculateEnemyFreeze(selectedBuild.frozenSpeed)}}</td>
+              </tr>
+              <tr>
+                <td>Warcried Speed:</td>
+                <td><input class="text-input" [(ngModel)]="selectedBuild.warcriedSpeed" /> </td>
+                <td>Enemy WC: {{selectedBuild.calculateEnemyWarcry(selectedBuild.warcriedSpeed)}}</td>
+              </tr>
+            </table>
+          </section>
+
+          <section class="card-surface toggle-card">
+            <div class="card-header">
+              <div>
+                <span class="eyebrow">Reference tables</span>
+                <h3>Visibility controls</h3>
+              </div>
+            </div>
+            <div class="table-toggle-controls">
+              <label class="checkbox-pill">
+                <input type="checkbox" [(ngModel)]="showStealthAndPercTables" />
+                <span>Show stealth/perception tables</span>
+              </label>
+              <label class="checkbox-pill">
+                <input type="checkbox" [(ngModel)]="showSpeedBreaksTable" />
+                <span>Show speed breaks table</span>
+              </label>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div class="support-grid">
+        <section class="card-surface" *ngIf="showStealthAndPercTables">
+          <div class="card-header">
+            <div>
+              <span class="eyebrow">Detection math</span>
+              <h3>Stealth vs perception</h3>
+            </div>
+          </div>
+          <div class="table-pair">
+            <div>
+              <p class="muted">Min perc mod to see X tiles:</p>
+              <table class="table-bordered">
+                <thead>
+                  <tr>
+                    <td># Tiles</td>
+                    <td>Dark</td>
+                    <td>Light</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let item of selectedBuild.minPercToSeeXSquaresDark; let i = index;">
+                    <td>{{ i+1 }}</td>
+                    <td>{{selectedBuild.minPercToSeeXSquaresDark[i]}}</td>
+                    <td>{{selectedBuild.minPercToSeeXSquaresLight[i]}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <p class="muted">Max stealth mod can see at X tiles:</p>
+              <table class="table-bordered">
+                <thead>
+                  <tr>
+                    <td># Tiles</td>
+                    <td>Dark</td>
+                    <td>Light</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let item of selectedBuild.maxStealthCanSeeXSquaresDark; let i = index;">
+                    <td>{{ i+1 }}</td>
+                    <td>{{selectedBuild.maxStealthCanSeeXSquaresDark[i]}}</td>
+                    <td>{{selectedBuild.maxStealthCanSeeXSquaresLight[i]}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="card-surface" *ngIf="showSpeedBreaksTable">
+          <div class="card-header">
+            <div>
+              <span class="eyebrow">Tempo guide</span>
+              <h3>Speed breaks</h3>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="table-bordered">
+              <thead>
+                <tr>
+                  <td>Ticks</td>
+                  <td>6-tick action
+                    <br/>
+                    Cast 1 (Bless/Heal target, LB, FB)
+                  </td>
+                  <td>8-tick action
+                    <br/>
+                    Move 2 (Diagonally - direction of melee combat)
+                    <br/>
+                    Use
+                  </td>
+                  <td>12-tick action
+                    <br/>
+                    Cast 2 (Freeze, Warcry, LF, ...)
+                    <br/>
+                    Move 1 (Directly up/down/left/right)
+                    <br/>
+                    Melee            
+                  </td>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of modeTickActions[selectedBuild.speedMode]; let i = index;" >
+                  <td>{{ i }}</td>
+                  <td *ngFor="let item2 of modeTickActions[selectedBuild.speedMode][i]; let j = index;">
+                    <span *ngIf="item2 == 10000 || item2 == -1000">-</span>
+                    <span *ngIf="item2 != 10000 && item2 != -1000">{{ item2 }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
