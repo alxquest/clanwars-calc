@@ -295,7 +295,7 @@
                       <td class="base-value numeric-col" data-label="Base">
                         <div class="base-input-container">
                           <button class="decrement-btn" [disabled]=" selectedBuild.stats[stat].base <=  selectedBuild.stats[stat].minBase" (click)=" selectedBuild.decrement( selectedBuild.stats[stat]);  selectedBuild.calculateAllXp()">-</button>
-                          <input class="number-input" [class.good-base]="selectedBuild.stats[stat].nextBaseIncreaseModIncrease == 1 && selectedBuild.stats[stat].equipmentDisabled !== true" [class.bad-base]="selectedBuild.stats[stat].base > selectedBuild.stats[stat].minBase && selectedBuild.stats[stat].equipmentDisabled !== true && selectedBuild.stats[stat].lastBaseIncreaseModIncrease == 1" type="number" oninput="this.value = this.value.replace(/[^0-9]/g, '');" [(ngModel)]="selectedBuild.stats[stat].base" (click)="selectText($event)"  [min]="selectedBuild.stats[stat].minBase" [max]="selectedBuild.stats[stat].maxBase"  (change)="selectedBuild.calculateAllXp()"/>
+                          <input class="number-input" [class.bad-base]="selectedBuild.stats[stat].nextBaseIncreaseModIncrease == 1 && selectedBuild.stats[stat].equipmentDisabled !== true" type="number" oninput="this.value = this.value.replace(/[^0-9]/g, '');" [(ngModel)]="selectedBuild.stats[stat].base" (click)="selectText($event)"  [min]="selectedBuild.stats[stat].minBase" [max]="selectedBuild.stats[stat].maxBase"  (change)="selectedBuild.calculateAllXp()"/>
                           <button class="increment-btn" [disabled]="selectedBuild.stats[stat].base >= selectedBuild.stats[stat].maxBase" (click)="selectedBuild.increment(selectedBuild.stats[stat]); selectedBuild.calculateAllXp()">+</button>
                         </div>
                       </td>
@@ -324,6 +324,22 @@
                   </ng-container>
                 </ng-container>
               </tbody>
+            </table>
+          </div>
+
+          <div class="prof-inline">
+            <span class="eyebrow">Professions</span>
+            <table class="prof-table stacked-table">
+              <tr *ngFor="let row of selectedBuild.profRows">
+                <td data-label="Profession">{{ row.name }}</td>
+                <td data-label="Points">
+                  <div class="base-input-container">
+                    <button class="decrement-btn" [disabled]="row.points < row.basePoints"  (click)="selectedBuild.decrementProf(row); selectedBuild.calculateAllXp()">-</button>
+                    <input class="number-input" type="number" [(ngModel)]="row.points" [min]="0" [max]="row.max"  (change)="selectedBuild.calculateAllXp()"/>
+                    <button class="increment-btn" [disabled]="row.points >= row.max" (click)="selectedBuild.incrementProf(row); selectedBuild.calculateAllXp()">+</button>
+                  </div>
+                </td>
+              </tr>
             </table>
           </div>
 
@@ -370,12 +386,21 @@
               <p class="muted helper-text">Open this link in a new tab to load the build instantly.</p>
               <p class="muted success-text" *ngIf="copyConfirmation">{{ copyConfirmation }}</p>
 
-              <label for="class-select">Choose a class</label>
-              <select id="class-select" [(ngModel)]="selectedBuild.selectedClass" (change)="selectedBuild.calculateAllXp()">
-                <option value="Seyan">Seyan</option>
-                <option value="Mage">Mage</option>
-                <option value="Warrior">Warrior</option>
-              </select>
+              <p class="muted">Choose a class</p>
+              <div class="pill-group">
+                <label class="pill-option">
+                  <input type="radio" name="class-choice" [(ngModel)]="selectedBuild.selectedClass" value="Seyan" (ngModelChange)="selectedBuild.calculateAllXp()" />
+                  <span>Seyan</span>
+                </label>
+                <label class="pill-option">
+                  <input type="radio" name="class-choice" [(ngModel)]="selectedBuild.selectedClass" value="Mage" (ngModelChange)="selectedBuild.calculateAllXp()" />
+                  <span>Mage</span>
+                </label>
+                <label class="pill-option">
+                  <input type="radio" name="class-choice" [(ngModel)]="selectedBuild.selectedClass" value="Warrior" (ngModelChange)="selectedBuild.calculateAllXp()" />
+                  <span>Warrior</span>
+                </label>
+              </div>
 
               <div class="toggle-grid">
                 <label class="checkbox-pill">
@@ -644,26 +669,6 @@
             </div>
           </section>
 
-          <section class="card-surface">
-            <div class="card-header">
-              <div>
-                <span class="eyebrow">Professions</span>
-                <h3>Allocate points</h3>
-              </div>
-            </div>
-            <table class="prof-table stacked-table">
-              <tr *ngFor="let row of selectedBuild.profRows">
-                <td data-label="Profession">{{ row.name }}</td>
-                <td data-label="Points">
-                  <div class="base-input-container">
-                    <button class="decrement-btn" [disabled]="row.points < row.basePoints"  (click)="selectedBuild.decrementProf(row); selectedBuild.calculateAllXp()">-</button>
-                    <input class="number-input" type="number" [(ngModel)]="row.points" [min]="0" [max]="row.max"  (change)="selectedBuild.calculateAllXp()"/>
-                    <button class="increment-btn" [disabled]="row.points >= row.max" (click)="selectedBuild.incrementProf(row); selectedBuild.calculateAllXp()">+</button>
-                  </div>
-                </td>
-              </tr>
-            </table>
-          </section>
 
           <section class="card-surface">
             <div class="card-header">

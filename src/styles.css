@@ -1,5 +1,21 @@
 /* You can add global styles to this file, and also import other style files */
 
+/* Inputs were sized `width: 100%` on top of their own padding and border, so they
+   overflowed their columns and overlapped whatever sat beside them. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Inputs were sized `width: 100%` on top of their own padding and border, so they
+   overflowed their columns and overlapped whatever sat beside them. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* The default body margin showed as a white frame around the dark app. */
 html,
 body {
@@ -9,6 +25,9 @@ body {
   background: #f1f5f9;
 }
 
-body.dark-theme {
+/* The canvas colour comes from <html>, so overriding only <body> left the area
+   beyond the app painted light while in dark mode. */
+html.dark-theme,
+html.dark-theme body {
   background: #0f172a;
 }

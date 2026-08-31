@@ -98,8 +98,10 @@ export class AppComponent implements OnInit {
     this.applyTheme();
   }
 
-  // The page background lives on <body>, outside this component's template.
+  // The page background lives outside this component's template, and the colour
+  // painted beyond the content comes from <html>, not <body>.
   private applyTheme(): void {
+    document.documentElement.classList.toggle('dark-theme', this.isDarkMode);
     document.body.classList.toggle('dark-theme', this.isDarkMode);
   }
 

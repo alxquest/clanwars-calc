@@ -770,6 +770,12 @@ select {
   flex-wrap: wrap;
 }
 
+.toggle-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .checkbox-pill {
   display: inline-flex;
   align-items: center;
@@ -907,8 +913,36 @@ select {
 
 .drop-zone:hover { background: rgba(var(--surface-tint-rgb), 0.05); }
 
-.good-base { color: #16a34a; }
-.bad-base { color: #f43f5e; }
+/* Angular rewrites the blanket `.app-root :is(th, td, input, ...)` colour rule with
+   its own scoping attributes, which lands it at a higher specificity than a plain
+   class. These state colours have to outrank it, hence the element qualifier. */
+.app-root .stat-table input.good-base { color: #16a34a; }
+
+.app-root .stat-table input.bad-base { color: #f43f5e; }
+
+.app-root .stat-table input.text-red,
+.app-root .text-red { color: #f43f5e; }
+
+.prof-inline {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.prof-inline .prof-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.prof-inline .prof-table td {
+  padding: 4px 6px;
+}
+
+.prof-inline .prof-table td:last-child {
+  width: 140px;
+}
 
 .form-grid {
   display: grid;
