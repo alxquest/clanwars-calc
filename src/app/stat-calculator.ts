@@ -116,10 +116,25 @@ export function expToLevel(exp: number) {
   return exp <= 0 ? 1 : Math.pow(exp / ExpPerLevel, 0.25);
 }
 
+export function levelToExp(level: number) {
+  return ExpPerLevel * Math.pow(level, 4);
+}
+
+// The optimizers recompute whole builds hundreds of times a second, and this loop
+// is the hot spot. The cost of a row depends only on (class, minBase, base, factor),
+// so it is worth remembering.
+const expCache = new Map<string, number>();
+
 export function totalExp(row: StatRow, Class: string, Hardcore: boolean) {
   const MinBase = row.minBase;
   const ExpFactor = row.expFactor;
   const Base = row.base;
+
+  const cacheKey = `${Class}|${MinBase}|${Base}|${ExpFactor}`;
+  const cached = expCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
 
   let Exp = 0;
 
@@ -134,6 +149,8 @@ export function totalExp(row: StatRow, Class: string, Hardcore: boolean) {
       Exp += Math.trunc((Math.pow(nr, 3) * ExpFactor) / 10 * 26 / 10);
     }
   }
+
+  expCache.set(cacheKey, Exp);
 
   return Exp;
 }

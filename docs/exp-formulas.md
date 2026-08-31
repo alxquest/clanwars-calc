@@ -104,7 +104,10 @@ All values agree exactly:
 
 This app began as a fork of an Astonia V calculator, and a few features have no Clan Wars
 counterpart in the decompiled source: the build optimizers, the stealth/perception
-visibility tables, and the speed-break table. They now run on Clan Wars numbers, but
-their own rules were never verified against a Clan Wars server. The duration readouts the
+visibility tables, and the speed-break table. They now run on Clan Wars numbers — the
+optimizers convert a target level to a budget with `3 · level⁴` and report levels with
+`(exp/3)^¼`, so "optimize to level 20" now spends the 480,000 experience a Clan Wars
+level 20 actually has rather than Astonia V's 160,000 — but their own search rules were
+never verified against a Clan Wars server. The duration readouts the
 Clan Wars forms show (self-bless, freeze and flash timers, endurance cost per swing,
 magic-shield value) have no place in this UI and are not displayed.

@@ -33,7 +33,7 @@
   font-size: 0.9rem;
   min-height: 100vh;
   line-height: 1.5;
-  padding: 16px;
+  padding: 8px 16px 16px;
   box-sizing: border-box;
 }
 
@@ -281,26 +281,8 @@
   box-shadow: var(--panel-shadow);
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
-}
-
-.brand-block {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.logo-badge {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #8b5cf6, #22d3ee);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  color: #0f172a;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
 .eyebrow {
@@ -311,10 +293,6 @@
   margin: 0 0 4px;
 }
 
-.subtitle {
-  margin: 6px 0 0;
-  color: rgba(229, 231, 235, 0.8);
-}
 
 .hero-meta {
   display: flex;
@@ -322,6 +300,7 @@
   align-items: center;
   gap: 14px;
   justify-content: flex-end;
+  flex: 1;
 }
 
 .theme-toggle {
@@ -359,10 +338,6 @@
     gap: 12px;
   }
 
-  .hero-card h1 {
-    font-size: 1.5rem;
-    line-height: 1.2;
-  }
 
   .hero-metric-grid {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -1088,7 +1063,7 @@ select {
 }
 
 @media (max-width: 768px) {
-  .app-root { padding: 16px; }
+  .app-root { padding: 8px 12px 16px; }
   .tabs { flex-wrap: wrap; }
   .tab { min-width: 140px; }
   .hero-card { flex-direction: column; }

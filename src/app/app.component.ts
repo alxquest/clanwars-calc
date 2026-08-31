@@ -6,6 +6,7 @@ import {
   Classes,
   attributesFor,
   expToLevel,
+  levelToExp,
   getWeaponValue,
   maxingBless,
   maxingGear,
@@ -1463,7 +1464,7 @@ class Build {
     beamWidth = 1000,
     allowProfessionUpgrades = true,
     maxWarcry = 0,
-    maxExplored = 250000
+    maxExplored = 50000
   ): Promise<Build> {
     const normalizedTargetLevel = (() => {
       const safeLevel = Math.max(1, targetLevel);
@@ -1473,7 +1474,7 @@ class Build {
       return safeLevel;
     })();
 
-    const targetExp = Math.pow(normalizedTargetLevel, 4);
+    const targetExp = levelToExp(normalizedTargetLevel);
     const normalizedMaxWarcry = Math.max(0, Math.floor(maxWarcry ?? 0));
     const canRaiseProfession = allowProfessionUpgrades && normalizedTargetLevel >= 20;
 
@@ -1630,11 +1631,12 @@ class Build {
       if (shouldReplaceBest) {
         bestSnapshot = { ...state, statBases: [...state.statBases] };
         hasValidSnapshot = true;
+        lastImprovement = processedStates;
       }
 
       if (progress) {
         progress.bestWarcry = warcryScore(bestSnapshot);
-        progress.bestBuildLevel = Math.pow(bestSnapshot.totalExp, 0.25);
+        progress.bestBuildLevel = expToLevel(bestSnapshot.totalExp);
       }
     };
 
@@ -1664,6 +1666,10 @@ class Build {
     const queue: WarcryState[] = [initialState];
     let queueDirty = false;
     let processedStates = 0;
+    // The beam plateaus long before the hard explore cap; without this the button
+    // ran for the better part of an hour and looked hung.
+    let lastImprovement = 0;
+    const stagnationLimit = Math.max(4000, (batchSize > 0 ? batchSize : 250) * 40);
 
     const ensureQueueSorted = () => {
       if (queueDirty) {
@@ -1675,7 +1681,10 @@ class Build {
     const enqueueState = (state: WarcryState) => {
       queue.push(state);
       queueDirty = true;
-      if (queue.length > maxQueueSize) {
+      // Prune with slack. Sorting on every push made each expanded candidate cost
+      // a full beam-width sort per child, which is what made the optimizers look
+      // hung; the loop below re-sorts and trims to the beam width anyway.
+      if (queue.length > maxQueueSize * 2) {
         ensureQueueSorted();
         queue.length = maxQueueSize;
       }
@@ -1683,6 +1692,9 @@ class Build {
 
     while (queue.length > 0) {
       ensureQueueSorted();
+      if (queue.length > maxQueueSize) {
+        queue.length = maxQueueSize;
+      }
       const state = queue.shift();
       if (!state) {
         break;
@@ -1801,10 +1813,13 @@ class Build {
         }
         break;
       }
+      if (hasValidSnapshot && processedStates - lastImprovement >= stagnationLimit) {
+        break;
+      }
       if (batchSize > 0 && processedStates % batchSize === 0) {
         if (progress) {
           progress.bestWarcry = hasValidSnapshot ? warcryScore(bestSnapshot) : 0;
-          progress.bestBuildLevel = Math.pow(bestSnapshot.totalExp, 0.25);
+          progress.bestBuildLevel = expToLevel(bestSnapshot.totalExp);
         }
         onProgress?.(progress ?? {
           exploredCount: 0,
@@ -1875,7 +1890,7 @@ class Build {
       return safeLevel;
     })();
 
-    const targetExp = Math.pow(normalizedTargetLevel, 4);
+    const targetExp = levelToExp(normalizedTargetLevel);
     const expBudget = targetExp * (1 - Math.min(99, Math.max(0, request.reservePercent)) / 100);
     const normalizedMaxWarcry = Math.max(0, Math.floor(request.maxWarcry ?? 0));
     const weightIsActive = (metric: OptimizationMetric) =>
@@ -2072,11 +2087,12 @@ class Build {
       if (shouldReplaceBest) {
         bestSnapshot = { ...state, statBases: [...state.statBases], metrics: { ...state.metrics } };
         hasValidSnapshot = true;
+        lastImprovement = processedStates;
       }
 
       if (progress) {
         progress.bestScore = bestSnapshot.score;
-        progress.bestBuildLevel = Math.pow(bestSnapshot.totalExp, 0.25);
+        progress.bestBuildLevel = expToLevel(bestSnapshot.totalExp);
       }
     };
 
@@ -2129,6 +2145,10 @@ class Build {
     const queue: OptimizationState[] = [initialState];
     let queueDirty = false;
     let processedStates = 0;
+    // The beam plateaus long before the hard explore cap; without this the button
+    // ran for the better part of an hour and looked hung.
+    let lastImprovement = 0;
+    const stagnationLimit = Math.max(4000, (batchSize > 0 ? batchSize : 250) * 40);
 
     const ensureQueueSorted = () => {
       if (queueDirty) {
@@ -2140,7 +2160,10 @@ class Build {
     const enqueueState = (state: OptimizationState) => {
       queue.push(state);
       queueDirty = true;
-      if (queue.length > maxQueueSize) {
+      // Prune with slack. Sorting on every push made each expanded candidate cost
+      // a full beam-width sort per child, which is what made the optimizers look
+      // hung; the loop below re-sorts and trims to the beam width anyway.
+      if (queue.length > maxQueueSize * 2) {
         ensureQueueSorted();
         queue.length = maxQueueSize;
       }
@@ -2148,6 +2171,9 @@ class Build {
 
     while (queue.length > 0) {
       ensureQueueSorted();
+      if (queue.length > maxQueueSize) {
+        queue.length = maxQueueSize;
+      }
       const state = queue.shift();
       if (!state) {
         break;
@@ -2229,10 +2255,13 @@ class Build {
       }
 
       processedStates += 1;
+      if (hasValidSnapshot && processedStates - lastImprovement >= stagnationLimit) {
+        break;
+      }
       if (batchSize > 0 && processedStates % batchSize === 0) {
         if (progress) {
           progress.bestScore = hasValidSnapshot ? bestSnapshot.score : 0;
-          progress.bestBuildLevel = Math.pow(bestSnapshot.totalExp, 0.25);
+          progress.bestBuildLevel = expToLevel(bestSnapshot.totalExp);
         }
         onProgress?.(progress ?? {
           exploredCount: 0,

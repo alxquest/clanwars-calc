@@ -1,4 +1,4 @@
-# Astonia V Stat Calculator
+# Clan Wars Stat Calculator
 
 Character stat / experience planner for the **Clan Wars** server. Angular 18 single-page app, no
 backend — it builds to a folder of static files, which is why it can live on GitHub Pages.

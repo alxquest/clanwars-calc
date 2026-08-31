@@ -1,14 +1,6 @@
 <div class="app-root" [class.dark-mode]="isDarkMode">
   <div class="page-shell">
     <header class="hero-card">
-      <div class="brand-block">
-        <div class="logo-badge">CW</div>
-        <div>
-          <p class="eyebrow">Clan Wars</p>
-          <h1>Plan modern builds faster</h1>
-          <p class="subtitle">Stats, speed and professions on Clan Wars' own experience curve.</p>
-        </div>
-      </div>
       <div class="hero-meta">
         <label class="theme-toggle">
           <input type="checkbox" [checked]="isDarkMode" (change)="toggleDarkMode()" />
@@ -27,12 +19,10 @@
           <div class="metric-card accent">
             <p class="eyebrow">Total level</p>
             <strong>{{ selectedBuild.totalLevel | number:'1.5-5' }}</strong>
-            <span class="muted">Including current modifiers</span>
           </div>
           <div class="metric-card">
             <p class="eyebrow">Total XP</p>
             <strong>{{ selectedBuild.totalExp | number }}</strong>
-            <span class="muted">Across stats & professions</span>
           </div>
         </div>
       </div>
@@ -41,8 +31,7 @@
     <section class="build-switcher card-surface">
       <div class="toolbar-head">
         <div class="toolbar-title">
-          <span class="eyebrow">Builds</span>
-          <h3>Switch between setups</h3>
+          <h3>Builds</h3>
         </div>
         <div class="toolbar-actions">
           <button class="icon-button" type="button" (click)="toggleMobileMenu()" aria-label="Toggle build menu">
