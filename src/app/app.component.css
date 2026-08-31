@@ -916,8 +916,12 @@ select {
 /* Angular rewrites the blanket `.app-root :is(th, td, input, ...)` colour rule with
    its own scoping attributes, which lands it at a higher specificity than a plain
    class. These state colours have to outrank it, hence the element qualifier. */
+
+/* Green: the next point would only buy 1 mod, so this is where to stop. */
 .app-root .stat-table input.good-base { color: #16a34a; }
 
+/* Red: the point you already bought only bought 1 mod - you went one past green.
+   Declared after .good-base so red wins when a base carries both. */
 .app-root .stat-table input.bad-base { color: #f43f5e; }
 
 .app-root .stat-table input.text-red,
