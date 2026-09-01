@@ -68,7 +68,9 @@ keys every spell off `Int/Str/Wis` where the mage form uses `Int/Int/Wis`. Mages
 Dagger, Staff and Hand-to-Hand. Thief points add fully to Stealth and half to Perception.
 
 Class skill lists: mages have no Regenerate, warriors no Meditate, seyans neither Rage
-nor Duration.
+nor Duration. Each form carries its own `SkillTable`, and the experience total is summed
+over that table alone — a skill the class does not have costs nothing, even if a build
+switched classes with that skill still raised.
 
 ## Combat
 

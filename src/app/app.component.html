@@ -312,7 +312,7 @@
                       </td>
                       <td class="numeric-col" data-label="Mod">
                         <div class="mod-display" (click)="selectedBuild.toggleModDetails(selectedBuild.stats[stat])" *ngIf="selectedBuild.stats[stat].modDisabled !== true" (mouseover)="selectedBuild.showModDetails(selectedBuild.stats[stat])" (mouseout)="selectedBuild.hideModDetails(selectedBuild.stats[stat])">
-                          {{ selectedBuild.stats[stat].mod }}
+                          {{ selectedBuild.stats[stat].modWithTactics ?? selectedBuild.stats[stat].mod }}
                           <div class="mod-details" *ngIf="selectedBuild.stats[stat].showDetails">
                             Base: {{ selectedBuild.stats[stat].base }} <br/>
                             Attributes: {{ selectedBuild.stats[stat].modFromAttributes || 0 }} <br/>
@@ -320,6 +320,9 @@
                               Equipment: {{ selectedBuild.stats[stat].modFromEquipment || 0 }} <br/>
                             </ng-container>
                             PTM: {{ selectedBuild.stats[stat].modFromPtm || 0 }}
+                            <ng-container *ngIf="selectedBuild.stats[stat].modFromTactics">
+                              <br/>Tactics: {{ selectedBuild.stats[stat].modFromTactics }}
+                            </ng-container>
                           </div>
                         </div>
                       </td>
@@ -432,7 +435,7 @@
                 </label>
                 <label class="checkbox-pill" *ngIf="selectedBuild.selectedClass !== 'Mage'">
                   <input type="checkbox" id="tactics-checkbox" [(ngModel)]="selectedBuild.tacticsActive" (change)="selectedBuild.calculateAllXp()" />
-                  <span>Tactics up</span>
+                  <span>Include tactics in table</span>
                 </label>
                 <label class="checkbox-pill" *ngIf="selectedBuild.selectedClass === 'Warrior'">
                   <input type="checkbox" id="rage-checkbox" [(ngModel)]="selectedBuild.rageActive" (change)="selectedBuild.calculateAllXp()" />

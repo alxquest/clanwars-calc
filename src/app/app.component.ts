@@ -2452,7 +2452,11 @@ class Build {
     this.statRows.forEach(row => {
 
       this.sanitizeRowInput(row);
-      row.expCost = this.calculateExp(row);
+      // Only skills the class actually has cost experience. Clan Wars' three forms
+      // each carry their own skill table, so a mage is never billed for Sword or
+      // Tactics - but switching an existing build's class leaves those bases in
+      // place, and charging for them inflated the total and the level with it.
+      row.expCost = this.isVisible(row) ? this.calculateExp(row) : 0;
       this.totalExp += row.expCost || 0;
       row.maxingEquipmentBonus = maxingGear(this.selectedClass, row.base);
       row.nextPointExp = row.base < row.maxBase
