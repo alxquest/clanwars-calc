@@ -605,14 +605,23 @@
 }
 
 .stat-table th:nth-child(2), .stat-table td:nth-child(2) {
-  width: 26%;
+  width: 22%;
   text-align: start;
 }
 
-.stat-table th:nth-child(3), .stat-table td:nth-child(3) { width: 19%; }
-.stat-table th:nth-child(4), .stat-table td:nth-child(4) { width: 19%; }
-.stat-table th:nth-child(5), .stat-table td:nth-child(5) { width: 14%; }
-.stat-table th:nth-child(6), .stat-table td:nth-child(6) { width: 12%; }
+.stat-table th:nth-child(3), .stat-table td:nth-child(3) { width: 27%; }
+.stat-table th:nth-child(4), .stat-table td:nth-child(4) { width: 17%; }
+.stat-table th:nth-child(5), .stat-table td:nth-child(5) { width: 12%; }
+.stat-table th:nth-child(6), .stat-table td:nth-child(6) { width: 11%; }
+
+/* What the next point costs, beside the + that buys it. */
+.next-exp {
+  font-size: 0.68rem;
+  opacity: 0.6;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  margin-left: 2px;
+}
 
 /* td defaults to left, so the numeric columns have to opt back in to match
    their centred headers. */

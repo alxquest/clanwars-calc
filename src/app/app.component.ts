@@ -10,6 +10,7 @@ import {
   getWeaponValue,
   maxingBless,
   maxingGear,
+  pointCost,
   calculateAttributeMod,
   minimumStealthToAvoidDetection,
   Professions,
@@ -232,7 +233,7 @@ export class AppComponent implements OnInit {
       return '';
     }
     try {
-      return this.selectedBuild.serialize();
+      return this.selectedBuild.serializeCompact();
     } catch (error) {
       console.error('Unable to serialize build', error);
       return '';
@@ -248,7 +249,7 @@ export class AppComponent implements OnInit {
     }
 
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
-    return `${baseUrl}?build=${encodeURIComponent(token)}`;
+    return `${baseUrl}?b=${token}`;
   }
 
   async copyBuildShareUrl() {
@@ -326,13 +327,14 @@ export class AppComponent implements OnInit {
     }
 
     const params = new URLSearchParams(window.location.search);
+    const compactBuild = params.get('b');
     const encodedBuild = params.get('build');
-    if (!encodedBuild) {
-      return;
-    }
 
-    const normalizedBuild = encodedBuild.replace(/ /g, '+');
-    const importedBuild = Build.fromSerialized(normalizedBuild);
+    // ?build= is the older base64-JSON token; links using it still work.
+    const importedBuild = compactBuild
+      ? Build.fromCompact(compactBuild)
+      : (encodedBuild ? Build.fromSerialized(encodedBuild.replace(/ /g, '+')) : null);
+
     if (!importedBuild) {
       return;
     }
@@ -1405,6 +1407,130 @@ class Build {
     return Build.encodeString(JSON.stringify(payload));
   }
 
+  // The base64-JSON token above ran to ~2,400 characters, which is not something
+  // you can paste into a chat message. This carries only what changes the numbers -
+  // bases, PTM, professions and the toggles - as fixed-width base-36 fields in the
+  // rows' own order, so no keys travel with it. Equipment is deliberately dropped;
+  // the "maxing equipment" flag covers the usual case.
+  private static readonly SHARE_VERSION = '1';
+
+  private static readonly CLASS_CODES: Record<string, string> = {
+    [Classes.Seyan]: 'S',
+    [Classes.Mage]: 'M',
+    [Classes.Warrior]: 'W'
+  };
+
+  private static readonly SPEED_CODES: Record<string, string> = {
+    Fast: 'F',
+    Normal: 'N',
+    Stealth: 'S'
+  };
+
+  private static enc(value: number, width: number): string {
+    return Math.max(0, Math.round(value || 0)).toString(36).padStart(width, '0').slice(-width);
+  }
+
+  private static dec(text: string, fallback: number): number {
+    const value = parseInt(text, 36);
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  private static codeFor(map: Record<string, string>, code: string): string | undefined {
+    return Object.keys(map).find(key => map[key] === code);
+  }
+
+  serializeCompact(): string {
+    const flags =
+      (this.blessed ? 1 : 0) |
+      (this.maxingBless ? 2 : 0) |
+      (this.hardcore ? 4 : 0) |
+      (this.maxingEquipment ? 8 : 0) |
+      (this.unarched ? 16 : 0) |
+      (this.thiefMode ? 32 : 0) |
+      (this.tacticsActive ? 64 : 0) |
+      (this.rageActive ? 128 : 0);
+
+    const header = Build.SHARE_VERSION
+      + (Build.CLASS_CODES[this.selectedClass] ?? 'S')
+      + (Build.SPEED_CODES[this.speedMode] ?? 'F')
+      + Build.enc(flags, 2);
+
+    const bases = this.statRows.map(row => Build.enc(row.base, 2)).join('');
+
+    // PTM is zero on almost every row, so only the set ones travel.
+    const ptm = this.statRows
+      .map((row, index) => ({ index, value: row.ptmBonus ?? 0 }))
+      .filter(entry => entry.value > 0)
+      .map(entry => Build.enc(entry.index, 2) + Build.enc(entry.value, 2))
+      .join('');
+
+    const profs = this.profRows.map(row => Build.enc(row.points, 2)).join('');
+
+    return [header, bases, ptm, profs, encodeURIComponent(this.name || '')].join('-');
+  }
+
+  static fromCompact(token: string): Build | null {
+    try {
+      const parts = token.split('-');
+      if (parts.length < 4) {
+        return null;
+      }
+
+      const [header, bases, ptm, profs, ...nameParts] = parts;
+      if (header.charAt(0) !== Build.SHARE_VERSION) {
+        return null;
+      }
+
+      const build = new Build();
+
+      build.selectedClass = Build.codeFor(Build.CLASS_CODES, header.charAt(1)) ?? build.selectedClass;
+      build.speedMode = Build.codeFor(Build.SPEED_CODES, header.charAt(2)) ?? build.speedMode;
+
+      const flags = Build.dec(header.slice(3, 5), 0);
+      build.blessed = !!(flags & 1);
+      build.maxingBless = !!(flags & 2);
+      build.hardcore = !!(flags & 4);
+      build.maxingEquipment = !!(flags & 8);
+      build.unarched = !!(flags & 16);
+      build.thiefMode = !!(flags & 32);
+      build.tacticsActive = !!(flags & 64);
+      build.rageActive = !!(flags & 128);
+
+      build.statRows = build.statRows.map((row, index) => {
+        const chunk = bases.slice(index * 2, index * 2 + 2);
+        return chunk.length < 2
+          ? { ...row, ptmBonus: 0 }
+          : { ...row, base: Build.dec(chunk, row.base), ptmBonus: 0 };
+      });
+
+      for (let i = 0; i + 4 <= ptm.length; i += 4) {
+        const index = Build.dec(ptm.slice(i, i + 2), -1);
+        const value = Build.dec(ptm.slice(i + 2, i + 4), 0);
+        if (build.statRows[index]) {
+          build.statRows[index] = { ...build.statRows[index], ptmBonus: value };
+        }
+      }
+
+      build.profRows = build.profRows.map((row, index) => {
+        const chunk = profs.slice(index * 2, index * 2 + 2);
+        return chunk.length < 2 ? row : { ...row, points: Build.dec(chunk, row.points) };
+      });
+
+      // A build name may itself contain a dash, so it is the last field.
+      const name = decodeURIComponent(nameParts.join('-'));
+      if (name) {
+        build.name = name;
+      }
+
+      build.id = build.generateUniqueId();
+
+      return build;
+    } catch (error) {
+      console.error('Unable to read compact build token', error);
+      return null;
+    }
+  }
+
   static fromSerialized(serialized: string): Build | null {
     try {
       const json = Build.decodeString(serialized);
@@ -2329,6 +2455,9 @@ class Build {
       row.expCost = this.calculateExp(row);
       this.totalExp += row.expCost || 0;
       row.maxingEquipmentBonus = maxingGear(this.selectedClass, row.base);
+      row.nextPointExp = row.base < row.maxBase
+        ? pointCost(this.selectedClass, row.minBase, row.base, row.expFactor)
+        : null;
       this.stats[row.name] = row;
     });
     this.totalLevel = expToLevel(this.totalExp);

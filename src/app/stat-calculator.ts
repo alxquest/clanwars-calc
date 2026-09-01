@@ -6,6 +6,8 @@ export interface StatRow {
   // being clamped by the gear allowance, so it can push a stat past its cap.
   ptmBonus?: number | null;
   modFromPtm?: number | null;
+  // What the next point costs, for the hint beside the + button.
+  nextPointExp?: number | null;
   mod: number | null;
   nextBaseIncreaseMod?: number | null;
   nextBaseIncreaseModIncrease?: number | null;
@@ -124,6 +126,19 @@ export function levelToExp(level: number) {
   return ExpPerLevel * Math.pow(level, 4);
 }
 
+// Cost of raising a stat from `base` to `base + 1`.
+export function pointCost(Class: string, minBase: number, base: number, ExpFactor: number) {
+  const nr = base - minBase + 6;
+
+  if (Class === Classes.Seyan) {
+    // max(1, nr^3 * cost * 12 / 30), all integer arithmetic
+    return Math.max(1, Math.floor((nr * nr * nr * ExpFactor * 12) / 30));
+  }
+
+  // (int)(pow(nr,3) * cost / 10 * 26 / 10) - operation order kept as decompiled
+  return Math.trunc((Math.pow(nr, 3) * ExpFactor) / 10 * 26 / 10);
+}
+
 // The optimizers recompute whole builds hundreds of times a second, and this loop
 // is the hot spot. The cost of a row depends only on (class, minBase, base, factor),
 // so it is worth remembering.
@@ -143,15 +158,7 @@ export function totalExp(row: StatRow, Class: string, Hardcore: boolean) {
   let Exp = 0;
 
   for (let n = MinBase; n < Base; n++) {
-    const nr = n - MinBase + 6;
-
-    if (Class === Classes.Seyan) {
-      // max(1, nr^3 * cost * 12 / 30), all integer arithmetic
-      Exp += Math.max(1, Math.floor((nr * nr * nr * ExpFactor * 12) / 30));
-    } else {
-      // (int)(pow(nr,3) * cost / 10 * 26 / 10) - operation order kept as decompiled
-      Exp += Math.trunc((Math.pow(nr, 3) * ExpFactor) / 10 * 26 / 10);
-    }
+    Exp += pointCost(Class, MinBase, n, ExpFactor);
   }
 
   expCache.set(cacheKey, Exp);

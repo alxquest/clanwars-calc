@@ -38,6 +38,17 @@ Output lands in `dist/clanwars-calc/browser/`. The `build:pages` script passes
 `public/.nojekyll` stops Pages from running Jekyll over the build output (which would
 otherwise drop Angular's hashed `_`-prefixed files).
 
+## Share links
+
+`?b=` carries a build as fixed-width base-36 fields in the stat rows' own order, so no
+keys travel with it: a header (version, class, speed mode, toggle bitmask), then bases,
+then only the non-zero PTM entries, then professions, then the name. A full level-34
+build comes to about 90 characters of token — roughly 130 including the URL, against
+2,400 for the base64-JSON tokens it replaces.
+
+Per-stat equipment values are deliberately not carried; the "maxing equipment" toggle is,
+which covers the usual case. Older `?build=` links still load.
+
 ## Stale caches after a redeploy
 
 The JS and CSS filenames are content-hashed, so browsers pick those up on their own. The

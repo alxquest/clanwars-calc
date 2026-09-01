@@ -28,6 +28,16 @@
         return match ? match[0] : null;
       }
 
+      // If we already came back from a bust, tidy the marker out of the address bar
+      // so a copied link never carries it.
+      try {
+        var here = new URL(window.location.href);
+        if (here.searchParams.has('v')) {
+          here.searchParams.delete('v');
+          history.replaceState(null, '', here.toString());
+        }
+      } catch (e) {}
+
       window.addEventListener('load', function () {
         var loadedScript = document.querySelector('script[src*="main-"]');
         if (!loadedScript || !window.fetch) {
@@ -61,7 +71,17 @@
               return;
             }
 
-            location.reload();
+            // location.reload() only revalidates, and a CDN edge can answer with the
+            // same stale document. Navigating to a URL the cache has never seen
+            // cannot be served from it. The marker is the deployed bundle's hash, so
+            // it stays stable per release rather than changing on every load.
+            try {
+              var target = new URL(window.location.href);
+              target.searchParams.set('v', deployed.replace(/^main-|\.js$/g, ''));
+              location.replace(target.toString());
+            } catch (e) {
+              location.reload();
+            }
           })
           .catch(function () {});
       });
