@@ -299,7 +299,7 @@
                           <button class="increment-btn" [disabled]="selectedBuild.stats[stat].base >= selectedBuild.stats[stat].maxBase" (click)="selectedBuild.increment(selectedBuild.stats[stat]); selectedBuild.calculateAllXp()">+</button>
                         </div>
                       </td>
-                      <td class="numeric-col" data-label="Equipment">
+                      <td class="numeric-col" data-label="Equipment" [class.cell-empty]="selectedBuild.stats[stat].equipmentDisabled === true">
                         <span class="equipment-input-container" *ngIf="selectedBuild.stats[stat].equipmentDisabled !== true">
                           <input class="number-input" type="number" oninput="this.value = this.value.replace(/[^0-9]/g, '');" [min]="0" [(ngModel)]="selectedBuild.stats[stat].equipmentBonus" (click)="selectText($event)"  [ngClass]="{'text-red': (selectedBuild.stats[stat].equipmentBonus || 0) >= (selectedBuild.stats[stat].maxingEquipmentBonus || 0)}" [disabled]="selectedBuild.maxingEquipment" (change)="selectedBuild.calculateMods()"  /> / {{selectedBuild.stats[stat].maxingEquipmentBonus}}
                         </span>
@@ -315,7 +315,9 @@
                           <div class="mod-details" *ngIf="selectedBuild.stats[stat].showDetails">
                             Base: {{ selectedBuild.stats[stat].base }} <br/>
                             Attributes: {{ selectedBuild.stats[stat].modFromAttributes || 0 }} <br/>
-                            Equipment: {{ selectedBuild.stats[stat].modFromEquipment || 0 }} <br/>
+                            <ng-container *ngIf="selectedBuild.stats[stat].equipmentDisabled !== true">
+                              Equipment: {{ selectedBuild.stats[stat].modFromEquipment || 0 }} <br/>
+                            </ng-container>
                             PTM: {{ selectedBuild.stats[stat].modFromPtm || 0 }}
                           </div>
                         </div>

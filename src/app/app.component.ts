@@ -1231,9 +1231,10 @@ class Build {
   
   // Example data model representing the rows
   statRows : StatRow[] = [
-    { name: Stats.HP, base: 10, mod: 10, minBase: 10, maxBase: 250, expFactor: 3, equipmentBonus: 0, ptmDisabled: true },
-    { name: Stats.ENDURANCE, base: 10, mod: 10, minBase: 10, maxBase: 250, expFactor: 3, equipmentBonus: 0, ptmDisabled: true },
-    { name: Stats.MANA, base: 10, mod: 10, minBase: 10, maxBase: 250, expFactor: 3, equipmentBonus: 0, ptmDisabled: true },
+    // Vitals take no gear bonus - only PTM can lift them past their base.
+    { name: Stats.HP, base: 10, mod: 10, minBase: 10, maxBase: 250, expFactor: 3, equipmentBonus: null, equipmentDisabled: true, ptmDisabled: true },
+    { name: Stats.ENDURANCE, base: 10, mod: 10, minBase: 10, maxBase: 250, expFactor: 3, equipmentBonus: null, equipmentDisabled: true, ptmDisabled: true },
+    { name: Stats.MANA, base: 10, mod: 10, minBase: 10, maxBase: 250, expFactor: 3, equipmentBonus: null, equipmentDisabled: true, ptmDisabled: true },
   
     { name: Stats.WIS, base: 10, mod: 12, minBase: 10, maxBase: 250, expFactor: 2, equipmentBonus: 0  },
     { name: Stats.INT, base: 10, mod: 13, minBase: 10, maxBase: 250, expFactor: 2, equipmentBonus: 0  },

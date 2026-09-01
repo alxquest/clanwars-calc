@@ -1130,6 +1130,175 @@ select {
   .form-grid { grid-template-columns: 1fr; }
 }
 
+/* On a phone the six fixed-width columns squeezed the headers into each other and
+   left the equipment box too narrow to tap past the base +/- buttons. Below this
+   width each row becomes a card and every field gets a full-width line of its own,
+   labelled from the cell's data-label. */
+@media (max-width: 720px) {
+  .stat-table,
+  .prof-table {
+    table-layout: auto;
+    display: block;
+  }
+
+  .stat-table thead {
+    display: none;
+  }
+
+  .stat-table tbody,
+  .prof-table tbody {
+    display: block;
+  }
+
+  .stat-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: rgba(var(--surface-tint-rgb), 0.03);
+  }
+
+  .stat-table tbody tr.spacer-row {
+    display: none;
+  }
+
+  .prof-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: rgba(var(--surface-tint-rgb), 0.03);
+  }
+
+  .stat-table td,
+  .prof-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: auto !important;
+    padding: 5px 0;
+    border-bottom: 0;
+    text-align: left;
+  }
+
+  .stat-table td.numeric-col {
+    text-align: left;
+  }
+
+  .stat-table td::before,
+  .prof-table td::before {
+    content: attr(data-label);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    flex: 0 0 auto;
+  }
+
+  /* Vitals have no equipment allowance, so don't leave an empty labelled line. */
+  .stat-table td.cell-empty {
+    display: none;
+  }
+
+  /* The stat name is the card's title, not another labelled field. */
+  .stat-table td[data-label="Stat"] {
+    font-weight: 600;
+    font-size: 1rem;
+    padding-top: 0;
+  }
+
+  .stat-table td[data-label="Stat"]::before,
+  .prof-table td[data-label="Profession"]::before {
+    content: none;
+  }
+
+  .prof-table td[data-label="Profession"] {
+    font-weight: 600;
+  }
+
+  .stat-table td[data-label="Stat"] {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .stat-table td[data-label="Actions"] {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: flex-end;
+    padding: 5px 0;
+  }
+
+  .stat-table td:not([data-label="Stat"]):not([data-label="Actions"]) {
+    grid-column: 1 / -1;
+  }
+
+  .stat-table td[data-label="Actions"]::before {
+    content: none;
+  }
+
+  /* Room to actually hit the boxes with a thumb. */
+  .stat-table .number-input,
+  .prof-table .number-input {
+    width: 64px;
+    height: 2rem;
+    font-size: 1rem;
+  }
+
+  .stat-table .increment-btn,
+  .stat-table .decrement-btn,
+  .prof-table .increment-btn,
+  .prof-table .decrement-btn {
+    height: 2rem;
+    min-width: 34px;
+  }
+
+  .base-input-container,
+  .equipment-input-container,
+  .ptm-input-container {
+    gap: 0.4rem;
+  }
+
+  .table-scroll {
+    overflow-x: visible;
+  }
+
+  /* The speed tooltip is a fixed 280px hover panel; there is no hover on a phone
+     and its absolutely-positioned contents were pushing the page 130px wider than
+     the screen. */
+  .speed-tooltip {
+    display: none;
+  }
+
+  /* The secondary tables keep their columns, so let them scroll inside the card
+     rather than stretch it. */
+  .table-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card-surface,
+  .content-grid > *,
+  .table-pair > * {
+    min-width: 0;
+  }
+
+  .table-bordered {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-bordered td {
+    padding: 6px;
+  }
+}
+
 /* Hide spinner buttons in Chrome, Safari, Edge, Opera */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {

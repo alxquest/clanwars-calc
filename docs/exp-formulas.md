@@ -53,6 +53,11 @@ attribute mod = base + clanWarriorPoints + equipment + PTM + bless
 skill mod     = base + min(sum(parents) / 5, max(15, base · 2)) + equipment + PTM + profession
 ```
 
+Hitpoints, Endurance and Mana take **no gear bonus** here — only PTM lifts them past
+their base. That matches the decompiled warrior form, which skips the gear allowance for
+the three vitals; the mage and seyan forms do apply one, so this is a deliberate choice
+to treat all three classes the warrior form's way rather than a transcription of each.
+
 `PTM` is Clan Wars' own third input next to base and equipment. It is added raw: it is
 not clamped by the gear allowance, so it is what takes a stat past its ceiling, and it
 costs no experience. `equipment` is clamped, `PTM` is not.

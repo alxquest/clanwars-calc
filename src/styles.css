@@ -8,12 +8,18 @@
   box-sizing: border-box;
 }
 
-/* Inputs were sized `width: 100%` on top of their own padding and border, so they
-   overflowed their columns and overlapped whatever sat beside them. */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+/* Double-tapping a stat's +/- on a phone used to zoom the page instead of
+   registering as two taps. `manipulation` drops the double-tap-to-zoom gesture
+   while leaving scrolling and pinch-to-zoom alone. */
+html,
+body,
+button,
+input,
+select,
+label,
+a,
+.app-root {
+  touch-action: manipulation;
 }
 
 /* The default body margin showed as a white frame around the dark app. */
