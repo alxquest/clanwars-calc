@@ -6,7 +6,7 @@
           <input type="checkbox" [checked]="isDarkMode" (change)="toggleDarkMode()" />
           <span>{{ isDarkMode ? 'Dark mode' : 'Light mode' }}</span>
         </label>
-        <div class="hero-metric-grid" *ngIf="selectedBuild">
+        <div class="hero-metric-grid" *ngIf="selectedBuild && appMode === 'calculator'">
           <div class="metric-card">
             <p class="eyebrow">Current build</p>
             <strong>{{ selectedBuild.name }}</strong>
@@ -28,6 +28,13 @@
       </div>
     </header>
 
+    <nav class="mode-tabs">
+      <button type="button" class="mode-tab" [class.active]="appMode === 'calculator'" (click)="appMode = 'calculator'">Calculator</button>
+      <button type="button" class="mode-tab" [class.active]="appMode === 'sets'" (click)="appMode = 'sets'">Set Maker</button>
+    </nav>
+
+    <ng-container *ngIf="appMode === 'calculator'">
+
     <section class="build-switcher card-surface">
       <div class="toolbar-head">
         <div class="toolbar-title">
@@ -43,15 +50,22 @@
             <button class="ghost-button" type="button" (click)="cloneSelectedBuild(); isMobileMenuOpen = false">Clone</button>
             <button class="ghost-button" type="button" (click)="openLoadModal(); isMobileMenuOpen = false">Load</button>
             <button class="primary-button" type="button" (click)="saveBuilds(); isMobileMenuOpen = false">Save</button>
+            <label class="checkbox-pill">
+              <input type="checkbox" [(ngModel)]="autoSave" (change)="toggleAutoSave()" />
+              <span>Auto-save</span>
+            </label>
           </div>
         </div>
       </div>
 
       <div class="tabs-wrapper" [class.mobile-open]="isMobileMenuOpen">
-        <div class="tabs-scroll" (click)="isMobileMenuOpen = false">
-          <div class="tabs">
+        <div class="tabs-row">
+          <input class="text-input tab-filter" type="search" placeholder="Filter builds&hellip;"
+                 [(ngModel)]="buildFilter" (click)="$event.stopPropagation()" />
+          <div class="tabs-scroll" #tabStrip (wheel)="onTabsWheel($event, tabStrip)" (click)="isMobileMenuOpen = false">
+            <div class="tabs">
             <div
-              *ngFor="let build of builds"
+              *ngFor="let build of filteredBuilds"
               class="tab"
               [ngClass]="{
                 'warrior-tab': build.selectedClass === 'Warrior',
@@ -62,14 +76,19 @@
               [class.selected]="build === selectedBuild"
             >
               <div class="tab-title">{{ build.name }}</div>
-              <span class="chip" [ngClass]="{
-                'warrior-chip': build.selectedClass === 'Warrior',
-                'mage-chip': build.selectedClass === 'Mage',
-                'seyan-chip': build.selectedClass === 'Seyan'
-              }">{{ build.selectedClass }}</span>
+              <div class="tab-meta">
+                <span class="chip" [ngClass]="{
+                  'warrior-chip': build.selectedClass === 'Warrior',
+                  'mage-chip': build.selectedClass === 'Mage',
+                  'seyan-chip': build.selectedClass === 'Seyan'
+                }">{{ build.selectedClass }}</span>
+                <span class="tab-level">Lv {{ build.totalLevel | number:'1.2-2' }}</span>
+              </div>
             </div>
-            <div class="tab add-tab" (click)="addNewBuild()">+ Add build</div>
+            <div class="tab empty-tab" *ngIf="filteredBuilds.length === 0">No builds match that name.</div>
+            </div>
           </div>
+          <div class="tab add-tab pinned-add" (click)="addNewBuild()">+ Add build</div>
         </div>
       </div>
     </section>
@@ -302,12 +321,12 @@
                       </td>
                       <td class="numeric-col" data-label="Equipment" [class.cell-empty]="selectedBuild.stats[stat].equipmentDisabled === true">
                         <span class="equipment-input-container" *ngIf="selectedBuild.stats[stat].equipmentDisabled !== true">
-                          <input class="number-input" type="number" oninput="this.value = this.value.replace(/[^0-9]/g, '');" [min]="0" [(ngModel)]="selectedBuild.stats[stat].equipmentBonus" (click)="selectText($event)"  [ngClass]="{'text-red': (selectedBuild.stats[stat].equipmentBonus || 0) >= (selectedBuild.stats[stat].maxingEquipmentBonus || 0)}" [disabled]="selectedBuild.maxingEquipment" (change)="selectedBuild.calculateMods()"  /> / {{selectedBuild.stats[stat].maxingEquipmentBonus}}
+                          <input class="number-input" type="number" oninput="this.value = this.value.replace(/[^0-9]/g, '');" [min]="0" [(ngModel)]="selectedBuild.stats[stat].equipmentBonus" (click)="selectText($event)"  [ngClass]="{'text-red': (selectedBuild.stats[stat].equipmentBonus || 0) >= (selectedBuild.stats[stat].maxingEquipmentBonus || 0)}" [disabled]="selectedBuild.maxingEquipment || selectedBuild.activeSetId !== 'custom'" (change)="selectedBuild.calculateMods()"  /> / {{selectedBuild.stats[stat].maxingEquipmentBonus}}
                         </span>
                       </td>
                       <td class="numeric-col" data-label="+PTM">
                         <span class="ptm-input-container" *ngIf="selectedBuild.stats[stat].modDisabled !== true">
-                          <input class="number-input" type="number" oninput="this.value = this.value.replace(/[^0-9]/g, '');" [min]="0" [(ngModel)]="selectedBuild.stats[stat].ptmBonus" (click)="selectText($event)" (change)="selectedBuild.calculateAllXp()" />
+                          <input class="number-input" type="number" oninput="this.value = this.value.replace(/[^0-9]/g, '');" [min]="0" [(ngModel)]="selectedBuild.stats[stat].ptmBonus" (click)="selectText($event)" [disabled]="selectedBuild.activeSetId !== 'custom'" (change)="selectedBuild.calculateAllXp()" />
                         </span>
                       </td>
                       <td class="numeric-col" data-label="Mod">
@@ -407,6 +426,16 @@
                   <span>Warrior</span>
                 </label>
               </div>
+
+              <p class="muted">Gear set</p>
+              <select class="text-input" [ngModel]="selectedBuild.activeSetId" (ngModelChange)="applySetToSelectedBuild($event)">
+                <option [ngValue]="'custom'">Custom</option>
+                <option *ngFor="let set of gearSets" [ngValue]="set.id">{{ set.name }}</option>
+              </select>
+              <p class="muted helper-text" *ngIf="selectedBuild.activeSetId !== 'custom'">
+                Equipment and PTM come from the set. Switch back to Custom to type your own &mdash; the
+                values you had are kept.
+              </p>
 
               <div class="toggle-grid">
                 <label class="checkbox-pill">
@@ -813,5 +842,186 @@
         </section>
       </div>
     </div>
+    </ng-container>
+
+    <ng-container *ngIf="appMode === 'sets'">
+      <section class="card-surface">
+        <div class="toolbar-head">
+          <div class="toolbar-title">
+            <h3>Set Maker</h3>
+          </div>
+          <div class="action-group">
+            <button class="ghost-button" type="button" (click)="addGearSet()">New set</button>
+            <button class="ghost-button" type="button" (click)="cloneGearSet()" [disabled]="!editingSet">Clone</button>
+            <button class="ghost-button" type="button" (click)="deleteGearSet()" [disabled]="!editingSet">Delete</button>
+          </div>
+        </div>
+
+        <p class="muted" *ngIf="!editingSet">No sets yet — create one to start kitting out a character.</p>
+
+        <div class="form-grid" *ngIf="editingSet">
+          <div class="input-row">
+            <label class="stacked-input">
+              <span class="input-label">Set</span>
+              <select class="text-input" [ngModel]="editingSet.id" (ngModelChange)="selectEditingSet($event)">
+                <option *ngFor="let set of gearSets" [ngValue]="set.id">{{ set.name }}</option>
+              </select>
+            </label>
+            <label class="stacked-input">
+              <span class="input-label">Name</span>
+              <input class="text-input" [(ngModel)]="editingSet.name" (change)="onGearSetChanged()" />
+            </label>
+          </div>
+
+          <div class="toggle-grid">
+            <label class="checkbox-pill">
+              <input type="checkbox" [(ngModel)]="editingSet.useSU" (change)="onGearSetChanged()" />
+              <span>Use SU</span>
+            </label>
+            <label class="checkbox-pill">
+              <input type="checkbox" [(ngModel)]="editingSet.useGU" [disabled]="!editingSet.useSU" (change)="onGearSetChanged()" />
+              <span>Use GU</span>
+            </label>
+          </div>
+          <p class="muted helper-text">
+            Silver and gold units each give every stat line on a piece a free +1, so they come off the
+            obol bill rather than adding to the stat. Gold units need the piece silvered first.
+          </p>
+
+          <div class="input-row optimizer-row">
+            <label class="stacked-input">
+              <span class="input-label">Set every special to</span>
+              <select class="text-input" [(ngModel)]="bulkSpecialStat" (ngModelChange)="applyBulkSpecial($event)">
+                <option [ngValue]="''">Pick a stat&hellip;</option>
+                <option *ngFor="let stat of GearStats" [ngValue]="stat">{{ stat }}</option>
+              </select>
+            </label>
+            <button class="ghost-button" type="button" (click)="clearAllSpecials()">Clear specials</button>
+            <label class="stacked-input">
+              <span class="input-label">Set every implicit to</span>
+              <select class="text-input" [(ngModel)]="bulkImplicitStat" (ngModelChange)="applyBulkImplicitStat($event)">
+                <option [ngValue]="''">Pick a stat&hellip;</option>
+                <option *ngFor="let stat of ImplicitStats" [ngValue]="stat">{{ stat }}</option>
+              </select>
+            </label>
+            <label class="stacked-input narrow-input">
+              <span class="input-label">Implicit +</span>
+              <input class="text-input" type="number" [min]="0" [max]="MaxImplicit" [(ngModel)]="bulkImplicitValue" />
+            </label>
+            <button class="ghost-button" type="button" (click)="applyBulkImplicitValue()">Set all implicits</button>
+            <button class="ghost-button" type="button" (click)="mirrorAll()">Mirror all +5</button>
+            <button class="ghost-button" type="button" (click)="clearAllMirrored()">Clear mirrored</button>
+          </div>
+
+          <div class="input-row share-row">
+            <input class="text-input share-input" [value]="currentSetShareUrl" readonly (click)="selectText($event)" />
+            <button class="ghost-button" type="button" (click)="copySetShareUrl()">Copy</button>
+          </div>
+          <p class="muted helper-text">Send this link to load the set on someone else's calculator.</p>
+          <p class="muted success-text" *ngIf="setCopyConfirmation">{{ setCopyConfirmation }}</p>
+        </div>
+      </section>
+
+      <section class="card-surface sticky-summary" *ngIf="setTotals as totals">
+        <div class="summary-strip">
+          <div class="summary-item level-item">
+            <span class="summary-label">Obols</span>
+            <span class="summary-number">{{ totals.obols | number }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">PTM orbs</span>
+            <span class="summary-number">{{ totals.ptmOrbs | number }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Orb gold</span>
+            <span class="summary-number">{{ totals.gold | number }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Orb exp</span>
+            <span class="summary-number">{{ totals.exp | number }}</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="slot-grid" *ngIf="editingSet">
+        <section class="card-surface slot-card" *ngFor="let piece of editingSet.pieces">
+          <div class="slot-head">
+            <h4>{{ piece.slot }}</h4>
+            <button class="ghost-button compact-button" type="button" (click)="clearPieceMirrored(piece)">
+              Clear mir
+            </button>
+          </div>
+
+          <div class="slot-legend">
+            <span>Stat</span>
+            <span>+</span>
+            <span title="Mirrored: another +5 on a line the piece already has">Mir</span>
+          </div>
+
+          <div class="slot-line" *ngFor="let line of piece.lines">
+            <select class="text-input" [(ngModel)]="line.stat" (ngModelChange)="onGearSetChanged()">
+              <option [ngValue]="''">&mdash;</option>
+              <option *ngFor="let stat of GearStats" [ngValue]="stat">{{ stat }} &middot; {{ ObolCosts[stat] }} obol</option>
+            </select>
+            <input class="number-input" type="number" [min]="0" [max]="MaxStatLine"
+                   [(ngModel)]="line.value" (change)="onGearSetChanged()" [disabled]="!line.stat" />
+            <input class="number-input" type="number" [min]="0" [max]="MaxMirrored"
+                   [(ngModel)]="line.mirrored" (change)="onGearSetChanged()"
+                   [disabled]="!line.stat" />
+          </div>
+
+          <div class="slot-line">
+            <select class="text-input" [(ngModel)]="piece.implicitStat" (ngModelChange)="onGearSetChanged()">
+              <option [ngValue]="''">No implicit</option>
+              <option *ngFor="let stat of ImplicitStats" [ngValue]="stat">{{ stat }}</option>
+            </select>
+            <input class="number-input" type="number" [min]="0" [max]="MaxImplicit"
+                   [(ngModel)]="piece.implicitValue" (change)="onGearSetChanged()"
+                   [disabled]="!piece.implicitStat" />
+            <span class="slot-note">impl</span>
+          </div>
+
+          <div class="slot-line">
+            <select class="text-input" [(ngModel)]="piece.specialStat" (ngModelChange)="onGearSetChanged()">
+              <option [ngValue]="''">No special</option>
+              <option *ngFor="let stat of GearStats" [ngValue]="stat">{{ stat }}</option>
+            </select>
+            <span class="slot-note wide-note">special +1</span>
+          </div>
+        </section>
+      </div>
+
+      <section class="card-surface" *ngIf="setTotals as totals">
+        <div class="card-header">
+          <div>
+            <span class="eyebrow">Cost</span>
+            <h3>What the set takes</h3>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="stat-table">
+            <thead>
+              <tr>
+                <th class="stat-name-col">Stat</th>
+                <th>Rate</th>
+                <th>Obols</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let stat of GearStats">
+                <td [hidden]="!totals.obolsByStat[stat]">{{ stat }}</td>
+                <td class="numeric-col" [hidden]="!totals.obolsByStat[stat]">{{ ObolCosts[stat] }}</td>
+                <td class="numeric-col" [hidden]="!totals.obolsByStat[stat]">{{ totals.obolsByStat[stat] | number }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted helper-text">
+          {{ totals.ptmOrbs | number }} PTM orbs (specials and mirrored lines) at {{ OrbGoldCost | number }} gold
+          and {{ OrbExpCost | number }} experience each &mdash; {{ totals.gold | number }} gold and
+          {{ totals.exp | number }} experience in total. Implicits are free.
+        </p>
+      </section>
+    </ng-container>
   </div>
 </div>

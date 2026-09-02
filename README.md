@@ -38,6 +38,35 @@ Output lands in `dist/clanwars-calc/browser/`. The `build:pages` script passes
 `public/.nojekyll` stops Pages from running Jekyll over the build output (which would
 otherwise drop Angular's hashed `_`-prefixed files).
 
+## Set maker
+
+A second mode (the tabs under the header) for building gear sets across the 11 modifiable
+worn slots — the right hand holds a torch on this server and is not one of them.
+
+Each piece carries three stat lines up to +20, one HP/Endurance/Mana implicit from +1 to
++10, and one "special" +1 in any stat. Pieces marked **101+** can mirror any line they
+already have for up to another +5. The three stat lines are ordinary gear and are still
+clamped by the wearer's gear allowance; the implicit, the special and mirrored points all
+behave like PTM and ignore it.
+
+Costs, tallied live:
+
+- **Obols** for the stat lines, at 1/2/3/4 per point depending on the stat (see
+  `ObolCosts` in `src/app/gear-set.ts`).
+- **Silver and gold units** each hand every stat line on a piece a free +1, so they come
+  off the bill rather than adding to the stat — a +20 immunity line with both costs
+  18 x 4 = 72 obols. GU needs the piece silvered first.
+- **PTM orbs** for specials and mirrored points, one per point, at 2,000 gold and
+  5,000,000 experience each. Implicits are free.
+
+Bulk tools set every special or implicit to one stat, set every implicit's value at once,
+clear all specials, mirror every filled line at +5, or clear mirrored points across the
+set or on one piece.
+
+A build wears a set through the "Gear set" picker, or stays on **Custom** and keeps its
+own typed equipment and PTM — those values are stashed while a set is worn and come back
+untouched when you switch back. Sets have their own `?s=` share links.
+
 ## Share links
 
 `?b=` carries a build as fixed-width base-36 fields in the stat rows' own order, so no

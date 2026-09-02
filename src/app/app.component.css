@@ -430,7 +430,9 @@
   background: var(--surface-solid);
   border-color: rgba(var(--surface-tint-rgb), 0.12);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(12px);
+  /* No backdrop-filter here: a sticky element re-blurs its backdrop on every
+     scroll frame, which was the most expensive thing on the page on mobile. The
+     background below is already opaque enough to stand on its own. */
 }
 
 .toolbar-head {
@@ -481,8 +483,55 @@
   padding: 8px;
 }
 
+/* Add build sits outside the scroller so it never scrolls out of reach. */
+.tabs-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tab-filter {
+  flex: 0 0 160px;
+  align-self: center;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+
+.tab-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.tab-level {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.75;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pinned-add {
+  flex: 0 0 auto;
+  align-self: stretch;
+  place-content: center;
+}
+
+.empty-tab {
+  cursor: default;
+  opacity: 0.6;
+  place-content: center;
+}
+
+.narrow-input {
+  flex: 0 1 110px;
+}
+
 .tabs-scroll {
   flex: 1 1 auto;
+  min-width: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -684,6 +733,12 @@
   background: rgba(var(--surface-tint-rgb), 0.06);
   border: 1px solid var(--border-color);
   border-radius: 6px;
+  color: var(--muted-text);
+}
+
+select option,
+select optgroup {
+  background-color: var(--modal-background);
   color: var(--muted-text);
 }
 
@@ -1277,6 +1332,26 @@ select {
     overflow-x: visible;
   }
 
+  /* On a phone the filter and the pinned Add button together left no room at all
+     for the tab strip, so give the filter its own line. */
+  .tabs-row {
+    flex-wrap: wrap;
+  }
+
+  .tab-filter {
+    flex: 1 1 100%;
+  }
+
+  .tabs-scroll {
+    flex: 1 1 0;
+    min-width: 100px;
+  }
+
+  .pinned-add {
+    min-width: auto;
+    padding: 8px 12px;
+  }
+
   /* The speed tooltip is a fixed 280px hover panel; there is no hover on a phone
      and its absolutely-positioned contents were pushing the page 130px wider than
      the screen. */
@@ -1306,6 +1381,104 @@ select {
   .table-bordered td {
     padding: 6px;
   }
+}
+
+/* --- Set maker ------------------------------------------------------ */
+
+.mode-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-tab {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(var(--surface-tint-rgb), 0.05);
+  color: var(--muted-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.mode-tab.active {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(34, 211, 238, 0.3));
+  border-color: rgba(139, 92, 246, 0.5);
+  font-weight: 600;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.slot-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.slot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.slot-head h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.compact-button {
+  padding: 4px 10px;
+  font-size: 0.72rem;
+}
+
+.compact-pill {
+  padding: 4px 8px;
+  font-size: 0.78rem;
+}
+
+/* The three columns every line in a slot card shares. */
+.slot-legend,
+.slot-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px 56px;
+  gap: 6px;
+  align-items: center;
+}
+
+.slot-legend {
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.slot-legend span:not(:first-child) {
+  text-align: center;
+}
+
+.slot-line .text-input {
+  padding: 6px 8px;
+  font-size: 0.85rem;
+}
+
+.slot-line .number-input {
+  width: 100%;
+  height: 2rem;
+  text-align: center;
+}
+
+.slot-note {
+  font-size: 0.68rem;
+  opacity: 0.55;
+  text-align: center;
+}
+
+.wide-note {
+  grid-column: 2 / -1;
 }
 
 /* Hide spinner buttons in Chrome, Safari, Edge, Opera */

@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ViewContainerRef } from '@angular/core';
+import { Component, NgZone, OnInit, ViewChild, ViewContainerRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -20,6 +20,23 @@ import {
   ptmBase,
   totalExp
 } from './stat-calculator';
+import {
+  GearSet,
+  GearSlots,
+  GearStats,
+  ImplicitStats,
+  MaxImplicit,
+  MaxMirrored,
+  MaxStatLine,
+  ObolCosts,
+  OrbExpCost,
+  OrbGoldCost,
+  SetTotals,
+  calculateSetTotals,
+  emptySet,
+  parseSet,
+  serializeSet
+} from './gear-set';
 
 interface WarcryOptimizationProgress {
   exploredCount: number;
@@ -73,17 +90,306 @@ export class AppComponent implements OnInit {
   isDarkMode = false;
   copyConfirmation = '';
 
+  private readonly zone = inject(NgZone);
+
   constructor() {
   }
 
   ngOnInit(): void {
     this.loadBuilds(); // Load builds from localStorage when the component initializes
+    this.loadGearSets();
+    this.loadAutoSavePreference();
     this.loadThemePreference();
     this.buildSpeedBreaksTable();
     this.tryLoadBuildFromQuery();
     if (this.builds.length == 0) {
       this.addNewBuild();
     }
+    this.reapplyGearSets();
+    this.startAutoSave();
+  }
+
+  // A build remembers which set it wears; re-derive the numbers on load in case
+  // the set was edited in another session.
+  private reapplyGearSets(): void {
+    this.builds.forEach(build => {
+      if (!build.activeSetId || build.activeSetId === 'custom') {
+        return;
+      }
+
+      const set = this.gearSets.find(entry => entry.id === build.activeSetId);
+      if (set) {
+        build.applyGearSet(calculateSetTotals(set), set.id);
+      } else {
+        build.applyGearSet(null);
+      }
+    });
+  }
+
+  // --- Set maker -------------------------------------------------------
+
+  // Recomputed only when the set actually changes. As a template getter this ran
+  // on every change-detection pass, walking 11 pieces each time.
+  setTotals: SetTotals | null = null;
+
+  private refreshSetTotals(): void {
+    this.setTotals = this.editingSet ? calculateSetTotals(this.editingSet) : null;
+  }
+
+  loadGearSets(): void {
+    try {
+      const stored = localStorage.getItem('gearSets');
+      this.gearSets = stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Unable to read saved sets', error);
+      this.gearSets = [];
+    }
+
+    this.editingSet = this.gearSets[0] ?? null;
+    this.refreshSetTotals();
+  }
+
+  saveGearSets(): void {
+    localStorage.setItem('gearSets', JSON.stringify(this.gearSets));
+  }
+
+  addGearSet(): void {
+    const set = emptySet(`Set ${this.gearSets.length + 1}`);
+    this.gearSets.push(set);
+    this.editingSet = set;
+    this.refreshSetTotals();
+    this.saveGearSets();
+  }
+
+  cloneGearSet(): void {
+    if (!this.editingSet) {
+      return;
+    }
+
+    const copy: GearSet = JSON.parse(JSON.stringify(this.editingSet));
+    copy.id = emptySet().id;
+    copy.name = `${this.editingSet.name} copy`;
+    this.gearSets.push(copy);
+    this.editingSet = copy;
+    this.refreshSetTotals();
+    this.saveGearSets();
+  }
+
+  deleteGearSet(): void {
+    if (!this.editingSet) {
+      return;
+    }
+
+    const removedId = this.editingSet.id;
+    this.gearSets = this.gearSets.filter(set => set.id !== removedId);
+    this.editingSet = this.gearSets[0] ?? null;
+    this.refreshSetTotals();
+
+    // Any build wearing it falls back to its own values.
+    this.builds.forEach(build => {
+      if (build.activeSetId === removedId) {
+        build.applyGearSet(null);
+      }
+    });
+
+    this.saveGearSets();
+  }
+
+  selectEditingSet(id: string): void {
+    this.editingSet = this.gearSets.find(set => set.id === id) ?? null;
+    this.refreshSetTotals();
+  }
+
+  // Called whenever a piece changes, so builds wearing the set follow along.
+  onGearSetChanged(): void {
+    if (!this.editingSet) {
+      return;
+    }
+
+    if (this.editingSet.useGU && !this.editingSet.useSU) {
+      // Gold units need the piece silvered first.
+      this.editingSet.useGU = false;
+    }
+
+    this.refreshSetTotals();
+    const totals = this.setTotals!;
+    this.builds.forEach(build => {
+      if (build.activeSetId === this.editingSet!.id) {
+        build.applyGearSet(totals, this.editingSet!.id);
+      }
+    });
+
+    this.saveGearSets();
+  }
+
+  // --- Bulk edits across the whole set --------------------------------
+
+  bulkSpecialStat = '';
+
+  applyBulkSpecial(stat: string): void {
+    if (!stat || !this.editingSet) {
+      this.bulkSpecialStat = '';
+      return;
+    }
+
+    this.editingSet.pieces.forEach(piece => (piece.specialStat = stat));
+    this.onGearSetChanged();
+    // Snap back to the placeholder on the next tick so picking the same stat
+    // again still fires a change.
+    setTimeout(() => (this.bulkSpecialStat = ''));
+  }
+
+  bulkImplicitStat = '';
+  bulkImplicitValue = 10;
+
+  applyBulkImplicitStat(stat: string): void {
+    if (!stat || !this.editingSet) {
+      this.bulkImplicitStat = '';
+      return;
+    }
+
+    this.editingSet.pieces.forEach(piece => {
+      piece.implicitStat = stat;
+      // A stat with no points on it is not worth carrying.
+      if (!piece.implicitValue) {
+        piece.implicitValue = this.bulkImplicitValue;
+      }
+    });
+    this.onGearSetChanged();
+    setTimeout(() => (this.bulkImplicitStat = ''));
+  }
+
+  applyBulkImplicitValue(): void {
+    if (!this.editingSet) {
+      return;
+    }
+
+    const value = Math.max(0, Math.min(this.MaxImplicit, Math.round(Number(this.bulkImplicitValue) || 0)));
+    this.editingSet.pieces.forEach(piece => (piece.implicitValue = value));
+    this.onGearSetChanged();
+  }
+
+  clearAllSpecials(): void {
+    if (!this.editingSet) {
+      return;
+    }
+
+    this.editingSet.pieces.forEach(piece => (piece.specialStat = ''));
+    this.onGearSetChanged();
+  }
+
+  // Mirror every line that actually has a stat on it.
+  mirrorAll(): void {
+    if (!this.editingSet) {
+      return;
+    }
+
+    this.editingSet.pieces.forEach(piece =>
+      piece.lines.forEach(line => {
+        if (line.stat && line.value > 0) {
+          line.mirrored = this.MaxMirrored;
+        }
+      })
+    );
+    this.onGearSetChanged();
+  }
+
+  clearAllMirrored(): void {
+    if (!this.editingSet) {
+      return;
+    }
+
+    this.editingSet.pieces.forEach(piece => piece.lines.forEach(line => (line.mirrored = 0)));
+    this.onGearSetChanged();
+  }
+
+  clearPieceMirrored(piece: any): void {
+    piece.lines.forEach((line: any) => (line.mirrored = 0));
+    this.onGearSetChanged();
+  }
+
+  applySetToSelectedBuild(id: string): void {
+    if (!this.selectedBuild) {
+      return;
+    }
+
+    if (id === 'custom') {
+      this.selectedBuild.applyGearSet(null);
+      return;
+    }
+
+    const set = this.gearSets.find(entry => entry.id === id);
+    if (!set) {
+      return;
+    }
+
+    this.selectedBuild.applyGearSet(calculateSetTotals(set), set.id);
+  }
+
+  get currentSetShareUrl(): string {
+    if (!this.editingSet || typeof window === 'undefined') {
+      return '';
+    }
+
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+    return `${baseUrl}?s=${serializeSet(this.editingSet)}`;
+  }
+
+  async copySetShareUrl() {
+    const url = this.currentSetShareUrl;
+    if (!url) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      this.setCopyConfirmation = 'Set link copied.';
+      setTimeout(() => (this.setCopyConfirmation = ''), 2500);
+    } catch (error) {
+      console.error('Unable to copy set link', error);
+    }
+  }
+
+  // --- Auto-save -------------------------------------------------------
+
+  loadAutoSavePreference(): void {
+    const stored = localStorage.getItem('autoSaveBuilds');
+    this.autoSave = stored !== 'false';
+  }
+
+  toggleAutoSave(): void {
+    localStorage.setItem('autoSaveBuilds', this.autoSave ? 'true' : 'false');
+    if (this.autoSave) {
+      this.saveBuilds();
+      this.saveGearSets();
+    }
+  }
+
+  private startAutoSave(): void {
+    if (this.autoSaveTimer) {
+      return;
+    }
+
+    // Outside Angular's zone: writing to localStorage changes nothing on screen,
+    // and letting the tick schedule a change-detection pass every few seconds was
+    // waking phones up for no reason.
+    this.zone.runOutsideAngular(() => {
+      this.autoSaveTimer = setInterval(() => {
+        if (!this.autoSave || document.hidden) {
+          return;
+        }
+
+        // Only touch storage when something actually moved.
+        const snapshot = JSON.stringify({ builds: this.builds, sets: this.gearSets });
+        if (snapshot === this.lastAutoSaveSnapshot) {
+          return;
+        }
+
+        this.lastAutoSaveSnapshot = snapshot;
+        this.saveBuilds();
+        this.saveGearSets();
+      }, 15000);
+    });
   }
 
   loadThemePreference(): void {
@@ -127,6 +433,9 @@ export class AppComponent implements OnInit {
         savedBuild.thiefMode = parsedBuild.thiefMode ?? false;
         savedBuild.tacticsActive = parsedBuild.tacticsActive ?? true;
         savedBuild.rageActive = parsedBuild.rageActive ?? true;
+        savedBuild.activeSetId = parsedBuild.activeSetId ?? 'custom';
+        savedBuild.customEquipment = parsedBuild.customEquipment ?? {};
+        savedBuild.customPtm = parsedBuild.customPtm ?? {};
         savedBuild.speedMode = parsedBuild.speedMode ?? savedBuild.speedMode;
 
         savedBuild.statRows = parsedBuild.statRows;
@@ -150,6 +459,47 @@ export class AppComponent implements OnInit {
   selectedBuildType: string = 'buildType1'; // Default build type
   selectedBuild : Build = new Build()
   isLoadModalOpen: boolean = false;
+  // Set maker ------------------------------------------------------------
+  appMode: 'calculator' | 'sets' = 'calculator';
+  gearSets: GearSet[] = [];
+  editingSet: GearSet | null = null;
+  autoSave = true;
+  setCopyConfirmation = '';
+
+  // Exposed for the template.
+  GearSlots = GearSlots;
+  GearStats = GearStats;
+  ImplicitStats = ImplicitStats;
+  ObolCosts = ObolCosts;
+  MaxStatLine = MaxStatLine;
+  MaxImplicit = MaxImplicit;
+  MaxMirrored = MaxMirrored;
+  OrbGoldCost = OrbGoldCost;
+  OrbExpCost = OrbExpCost;
+
+  private autoSaveTimer: any = null;
+  private lastAutoSaveSnapshot = '';
+
+  buildFilter = '';
+
+  get filteredBuilds(): Build[] {
+    const needle = this.buildFilter.trim().toLowerCase();
+    return needle ? this.builds.filter(build => build.name.toLowerCase().includes(needle)) : this.builds;
+  }
+
+  // The tab strip only scrolls sideways, so a plain wheel drives it. The page
+  // never scrolls from here, including once the strip has hit either end -
+  // otherwise reaching the last build hands the scroll to the page and jumps you
+  // down it.
+  onTabsWheel(event: WheelEvent, strip: HTMLElement): void {
+    event.preventDefault();
+
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (delta) {
+      strip.scrollLeft += delta;
+    }
+  }
+
   showStealthAndPercTables = true;
   showSpeedBreaksTable = true;
   isMobileMenuOpen = false;
@@ -327,6 +677,19 @@ export class AppComponent implements OnInit {
     }
 
     const params = new URLSearchParams(window.location.search);
+
+    const sharedSet = params.get('s');
+    if (sharedSet) {
+      const importedSet = parseSet(sharedSet);
+      if (importedSet) {
+        this.gearSets.push(importedSet);
+        this.editingSet = importedSet;
+        this.refreshSetTotals();
+        this.appMode = 'sets';
+        this.saveGearSets();
+      }
+    }
+
     const compactBuild = params.get('b');
     const encodedBuild = params.get('build');
 
@@ -1183,6 +1546,12 @@ class Build {
   tacticsActive = true;
   rageActive = true;
 
+  // Which gear set this build wears. 'custom' means the equipment and PTM boxes
+  // are whatever was typed into them, which is remembered while a set is worn.
+  activeSetId = 'custom';
+  customEquipment: Record<string, number> = {};
+  customPtm: Record<string, number> = {};
+
 
   // Calculated values
   totalExp: number = 0;
@@ -1334,6 +1703,40 @@ class Build {
     }
   }
   // Method to check if a row should be visible based on the selected class
+  /**
+   * Wear a set, or hand the boxes back to the player. Switching away from custom
+   * stashes what was typed so it comes back untouched.
+   */
+  applyGearSet(totals: SetTotals | null, setId = 'custom') {
+    if (totals && this.activeSetId === 'custom') {
+      this.customEquipment = {};
+      this.customPtm = {};
+      this.statRows.forEach(row => {
+        this.customEquipment[row.name] = row.equipmentBonus ?? 0;
+        this.customPtm[row.name] = row.ptmBonus ?? 0;
+      });
+    }
+
+    if (totals) {
+      this.statRows.forEach(row => {
+        row.equipmentBonus = totals.equipment[row.name] ?? 0;
+        row.ptmBonus = totals.ptm[row.name] ?? 0;
+      });
+      // A set states the gear outright, so the "maxing equipment" shortcut would
+      // only overwrite it.
+      this.maxingEquipment = false;
+      this.activeSetId = setId;
+    } else {
+      this.statRows.forEach(row => {
+        row.equipmentBonus = this.customEquipment[row.name] ?? row.equipmentBonus ?? 0;
+        row.ptmBonus = this.customPtm[row.name] ?? row.ptmBonus ?? 0;
+      });
+      this.activeSetId = 'custom';
+    }
+
+    this.calculateAllXp();
+  }
+
   isVisible(row: any): boolean {
     return !row || !row.visibleFor || row.visibleFor.includes(this.selectedClass);
   }
@@ -1366,6 +1769,9 @@ class Build {
     clone.thiefMode = this.thiefMode;
     clone.tacticsActive = this.tacticsActive;
     clone.rageActive = this.rageActive;
+    clone.activeSetId = this.activeSetId;
+    clone.customEquipment = { ...this.customEquipment };
+    clone.customPtm = { ...this.customPtm };
 
     clone.statRows = JSON.parse(JSON.stringify(this.statRows));
     clone.profRows = JSON.parse(JSON.stringify(this.profRows));
@@ -2546,7 +2952,7 @@ class Build {
 
         } else {
 
-          stat.modFromEquipment = Math.min(stat.equipmentBonus || 0, stat.maxingEquipmentBonus || 9999);
+          stat.modFromEquipment = Math.min(stat.equipmentBonus || 0, stat.maxingEquipmentBonus ?? 9999);
         }
       } else {
         stat.modFromEquipment = 0;
@@ -2632,7 +3038,7 @@ class Build {
           if (this.maxingEquipment) {
             stat.modFromEquipment = stat.maxingEquipmentBonus || 0;
           } else {
-            stat.modFromEquipment = Math.min(stat.equipmentBonus || 0, stat.maxingEquipmentBonus || 9999);
+            stat.modFromEquipment = Math.min(stat.equipmentBonus || 0, stat.maxingEquipmentBonus ?? 9999);
           }
 
           let maxingEquipmentBonusNextBase = maxingGear(this.selectedClass, stat.base + 1);
@@ -2640,7 +3046,7 @@ class Build {
           if (this.maxingEquipment) {
             nextBaseIncreaseMod += maxingEquipmentBonusNextBase || 0;
           } else {
-            nextBaseIncreaseMod += Math.min(stat.equipmentBonus || 0, maxingEquipmentBonusNextBase || 9999);
+            nextBaseIncreaseMod += Math.min(stat.equipmentBonus || 0, maxingEquipmentBonusNextBase ?? 9999);
           }
 
           let maxingEquipmentBonusLastBase = maxingGear(this.selectedClass, stat.base - 1);
@@ -2648,7 +3054,7 @@ class Build {
           if (this.maxingEquipment) {
             lastBaseIncreaseMod += maxingEquipmentBonusLastBase || 0;
           } else {
-            lastBaseIncreaseMod += Math.min(stat.equipmentBonus || 0, maxingEquipmentBonusLastBase || 9999);
+            lastBaseIncreaseMod += Math.min(stat.equipmentBonus || 0, maxingEquipmentBonusLastBase ?? 9999);
           }
 
         } else {
@@ -2961,9 +3367,9 @@ class Build {
             var wisStat = this.stats[Stats.WIS];
             var blessStat = this.stats[Stats.BLESS];
 
-            var intEquipmentBonus = Math.min(intStat.equipmentBonus || 0, intStat.maxingEquipmentBonus || 9999);
-            var wisEquipmentBonus = Math.min(wisStat.equipmentBonus || 0, wisStat.maxingEquipmentBonus || 9999);
-            var blessEquipmentBonus = Math.min(blessStat.equipmentBonus || 0, blessStat.maxingEquipmentBonus || 9999);
+            var intEquipmentBonus = Math.min(intStat.equipmentBonus || 0, intStat.maxingEquipmentBonus ?? 9999);
+            var wisEquipmentBonus = Math.min(wisStat.equipmentBonus || 0, wisStat.maxingEquipmentBonus ?? 9999);
+            var blessEquipmentBonus = Math.min(blessStat.equipmentBonus || 0, blessStat.maxingEquipmentBonus ?? 9999);
 
             var IntMod = intStat.base + intEquipmentBonus;
             var WisMod = wisStat.base + wisEquipmentBonus;
@@ -2986,7 +3392,7 @@ class Build {
 
 
             var strStat = this.stats[Stats.STR];
-            var strEquipmentBonus = Math.min(strStat.equipmentBonus || 0, strStat.maxingEquipmentBonus || 9999);
+            var strEquipmentBonus = Math.min(strStat.equipmentBonus || 0, strStat.maxingEquipmentBonus ?? 9999);
             var StrMod = strStat.base + strEquipmentBonus;
 
             // Seyan bless keys off Int/Str/Wis, mage bless off Int/Int/Wis.
