@@ -525,6 +525,16 @@
   place-content: center;
 }
 
+/* The quick-build sheet is a table, so let it use the width it needs. */
+.wide-modal {
+  max-width: 760px;
+  width: 100%;
+}
+
+.quick-totals {
+  margin-top: 12px;
+}
+
 .narrow-input {
   flex: 0 1 110px;
 }
@@ -1421,12 +1431,20 @@ select {
 .slot-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
 }
 
+/* The game's own inventory sprites; keep the pixels crisp rather than smeared. */
+.slot-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  flex: 0 0 auto;
+}
+
 .slot-head h4 {
-  margin: 0;
+  margin: 0 auto 0 0;
   font-size: 1rem;
 }
 

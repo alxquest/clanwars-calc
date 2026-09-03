@@ -1,8 +1,23 @@
-import { Stats } from './stat-calculator';
+import { Classes, Stats } from './stat-calculator';
 
 // The 11 modifiable worn slots. The right hand holds a torch on this server and
 // cannot be modified, so it is not here. Two rings, kept as separate slots.
 export const GearSlots = [
+  'Ring 1',
+  'Weapon',
+  'Ring 2',
+  'Amulet',
+  'Hat',
+  'Cape',
+  'Chest',
+  'Belt',
+  'Sleeves',
+  'Pants',
+  'Boots'
+];
+
+// Version 1 tokens were written in the old slot order, so they must be read in it.
+const GearSlotsV1 = [
   'Amulet',
   'Hat',
   'Cape',
@@ -15,6 +30,24 @@ export const GearSlots = [
   'Ring 1',
   'Ring 2'
 ];
+
+// Inventory icons lifted from the game's own sprites.
+export const SlotIcons: Record<string, string> = {
+  'Ring 1': 'gear/ring.png',
+  'Ring 2': 'gear/ring.png',
+  Weapon: 'gear/weapon.png',
+  Amulet: 'gear/amulet.png',
+  Hat: 'gear/hat.png',
+  Cape: 'gear/cape.png',
+  Chest: 'gear/chest.png',
+  Belt: 'gear/belt.png',
+  Sleeves: 'gear/sleeves.png',
+  Pants: 'gear/pants.png',
+  Boots: 'gear/boots.png'
+};
+
+// Pieces carrying no armour value. Seyan sets want their dear stats here.
+export const SoftSlots = ['Ring 1', 'Ring 2', 'Amulet', 'Cape', 'Belt'];
 
 // Obols per point, by stat. A stat absent from this table cannot appear on gear.
 export const ObolCosts: Record<string, number> = {
@@ -50,8 +83,13 @@ export const ObolCosts: Record<string, number> = {
   [Stats.IMMUNITY]: 4
 };
 
-// Stats that can be rolled on a piece, alphabetically.
-export const GearStats = Object.keys(ObolCosts).sort((a, b) => a.localeCompare(b));
+// Share tokens carry a stat as its index in THIS list, so its order must never
+// change - re-sorting it would silently repoint every link ever made. The
+// display order is a separate concern; see GearStats.
+const GearStatCodes = Object.keys(ObolCosts);
+
+// Stats that can be rolled on a piece, alphabetically, for the dropdowns.
+export const GearStats = [...GearStatCodes].sort((a, b) => a.localeCompare(b));
 
 // The implicit line is always one of the three vitals.
 export const ImplicitStats = [Stats.HP, Stats.ENDURANCE, Stats.MANA];
@@ -210,7 +248,7 @@ export function calculateSetTotals(set: GearSet): SetTotals {
 // known order so nothing has to carry a key.
 // ---------------------------------------------------------------------------
 
-const SET_VERSION = '1';
+const SET_VERSION = '2';
 
 function enc(value: number, width: number): string {
   return Math.max(0, Math.round(value || 0)).toString(36).padStart(width, '0').slice(-width);
@@ -239,13 +277,13 @@ export function serializeSet(set: GearSet): string {
 
   const pieces = set.pieces.map(piece => {
     const lines = piece.lines
-      .map(line => enc(statIndex(GearStats, line.stat, 63), 2) + enc(line.value, 1) + enc(line.mirrored, 1))
+      .map(line => enc(statIndex(GearStatCodes, line.stat, 63), 2) + enc(line.value, 1) + enc(line.mirrored, 1))
       .join('');
 
     return lines
       + enc(statIndex(ImplicitStats, piece.implicitStat, 9), 1)
       + enc(piece.implicitValue, 1)
-      + enc(statIndex(GearStats, piece.specialStat, 63), 2)
+      + enc(statIndex(GearStatCodes, piece.specialStat, 63), 2)
       + (piece.highLevel ? '1' : '0');
   }).join('');
 
@@ -260,7 +298,8 @@ export function parseSet(token: string): GearSet | null {
     }
 
     const [header, pieces, ...nameParts] = parts;
-    if (header.charAt(0) !== SET_VERSION) {
+    // v1 differs only in the slot order it was written in.
+    if (header.charAt(0) !== '1' && header.charAt(0) !== SET_VERSION) {
       return null;
     }
 
@@ -272,7 +311,10 @@ export function parseSet(token: string): GearSet | null {
     // 3 lines x 4 chars, then implicit stat + value, special stat, high-level flag
     const pieceWidth = StatLinesPerPiece * 4 + 1 + 1 + 2 + 1;
 
-    set.pieces = set.pieces.map((piece, index) => {
+    const order = header.charAt(0) === '1' ? GearSlotsV1 : GearSlots;
+
+    set.pieces = order.map((slot, index) => {
+      const piece = set.pieces.find(entry => entry.slot === slot) ?? emptyPiece(slot);
       const chunk = pieces.slice(index * pieceWidth, (index + 1) * pieceWidth);
       if (chunk.length < pieceWidth) {
         return piece;
@@ -281,7 +323,7 @@ export function parseSet(token: string): GearSet | null {
       const lines = piece.lines.map((_, i) => {
         const field = chunk.slice(i * 4, i * 4 + 4);
         return {
-          stat: statAt(GearStats, dec(field.slice(0, 2), 63)),
+          stat: statAt(GearStatCodes, dec(field.slice(0, 2), 63)),
           value: clamp(dec(field.charAt(2), 0), 0, MaxStatLine),
           mirrored: clamp(dec(field.charAt(3), 0), 0, MaxMirrored)
         };
@@ -294,10 +336,13 @@ export function parseSet(token: string): GearSet | null {
         lines,
         implicitStat: statAt(ImplicitStats, dec(rest.charAt(0), 9)),
         implicitValue: clamp(dec(rest.charAt(1), 0), 0, MaxImplicit),
-        specialStat: statAt(GearStats, dec(rest.slice(2, 4), 63)),
+        specialStat: statAt(GearStatCodes, dec(rest.slice(2, 4), 63)),
         highLevel: rest.charAt(4) === '1'
       };
     });
+
+    // Back into the order the UI shows, whichever order the token used.
+    set.pieces = GearSlots.map(slot => set.pieces.find(piece => piece.slot === slot) ?? emptyPiece(slot));
 
     const name = decodeURIComponent(nameParts.join('-'));
     if (name) {
@@ -309,4 +354,108 @@ export function parseSet(token: string): GearSet | null {
     console.error('Unable to read set token', error);
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Quick build: turn "3 lightning, 3 magic shield, 2 bless..." into a laid-out set.
+// ---------------------------------------------------------------------------
+
+export interface QuickDemand {
+  stat: string;
+  count: number;
+}
+
+// Stats that want to share a piece. Immunity sits in both fighting and casting
+// groups on purpose - it pairs happily with either.
+const AffinityGroups: string[][] = [
+  [Stats.WIS, Stats.INT, Stats.AGI, Stats.STR],
+  [Stats.ATTACK, Stats.PARRY, Stats.IMMUNITY],
+  [Stats.LIGHTNING, Stats.FIRE, Stats.MAGIC_SHIELD, Stats.IMMUNITY]
+];
+
+function affinity(a: string, b: string): number {
+  return AffinityGroups.filter(group => group.includes(a) && group.includes(b)).length;
+}
+
+/**
+ * The order pieces get filled. Dear stats should land on pieces that carry no
+ * armour value in a warrior/seyan set, and the weapon is always the last resort.
+ */
+export function fillOrder(className: string): string[] {
+  const weaponLast = (slots: string[]) => [...slots.filter(s => s !== 'Weapon'), 'Weapon'];
+
+  if (className === Classes.Mage) {
+    return weaponLast(GearSlots);
+  }
+
+  const soft = GearSlots.filter(slot => SoftSlots.includes(slot));
+  const hard = GearSlots.filter(slot => !SoftSlots.includes(slot) && slot !== 'Weapon');
+  return weaponLast([...soft, ...hard]);
+}
+
+export function quickBuildCapacity(): number {
+  return GearSlots.length * StatLinesPerPiece;
+}
+
+/**
+ * Lay demands out across the pieces. Each demand is a stat and how many pieces
+ * should carry it, every placed line rolled at the maximum.
+ */
+export function buildQuickSet(demands: QuickDemand[], className: string, name = 'Quick set'): GearSet {
+  const set = emptySet(name);
+  const order = fillOrder(className);
+  const byName = new Map(set.pieces.map(piece => [piece.slot, piece]));
+
+  const remaining = demands
+    .filter(d => d.stat && d.count > 0)
+    .map(d => ({ stat: d.stat, left: Math.min(d.count, GearSlots.length) }))
+    // Dearest first, so the expensive stats reach the pieces filled earliest.
+    .sort((a, b) => (ObolCosts[b.stat] ?? 0) - (ObolCosts[a.stat] ?? 0) || b.left - a.left);
+
+  order.forEach(slot => {
+    const piece = byName.get(slot);
+    if (!piece) {
+      return;
+    }
+
+    const placed: string[] = [];
+
+    for (let lineIndex = 0; lineIndex < StatLinesPerPiece; lineIndex++) {
+      // A piece can only carry one of any given stat.
+      const options = remaining.filter(entry => entry.left > 0 && !placed.includes(entry.stat));
+      if (!options.length) {
+        break;
+      }
+
+      const best = options.reduce((winner, entry) => {
+        const score = (candidate: { stat: string; left: number }) => {
+          const mates = placed.reduce((sum, stat) => sum + affinity(candidate.stat, stat), 0);
+          const rate = ObolCosts[candidate.stat] ?? 0;
+          // Closeness in price only matters once something is on the piece.
+          const priceFit = placed.length
+            ? -Math.abs(rate - (ObolCosts[placed[0]] ?? rate))
+            : rate;
+          return mates * 100 + priceFit * 10 + candidate.left;
+        };
+        return score(entry) > score(winner) ? entry : winner;
+      }, options[0]);
+
+      piece.lines[lineIndex] = { stat: best.stat, value: MaxStatLine, mirrored: 0 };
+      placed.push(best.stat);
+      best.left -= 1;
+    }
+  });
+
+  return set;
+}
+
+/**
+ * The base a stat needs for its gear allowance to swallow this much equipment.
+ * Mages and warriors get half their base, seyans 0.725 of it.
+ */
+export function baseToUseGear(total: number, className: string): number {
+  if (total <= 0) {
+    return 0;
+  }
+  return className === Classes.Seyan ? Math.ceil(total / 0.725) : total * 2;
 }

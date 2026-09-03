@@ -851,6 +851,7 @@
             <h3>Set Maker</h3>
           </div>
           <div class="action-group">
+            <button class="primary-button" type="button" (click)="openQuickBuild()">Quick build</button>
             <button class="ghost-button" type="button" (click)="addGearSet()">New set</button>
             <button class="ghost-button" type="button" (click)="cloneGearSet()" [disabled]="!editingSet">Clone</button>
             <button class="ghost-button" type="button" (click)="deleteGearSet()" [disabled]="!editingSet">Delete</button>
@@ -946,6 +947,7 @@
       <div class="slot-grid" *ngIf="editingSet">
         <section class="card-surface slot-card" *ngFor="let piece of editingSet.pieces">
           <div class="slot-head">
+            <img class="slot-icon" [src]="SlotIcons[piece.slot]" [alt]="piece.slot" />
             <h4>{{ piece.slot }}</h4>
             <button class="ghost-button compact-button" type="button" (click)="clearPieceMirrored(piece)">
               Clear mir
@@ -1022,6 +1024,85 @@
           {{ totals.exp | number }} experience in total. Implicits are free.
         </p>
       </section>
+      <div class="modal" [class.show]="isQuickBuildOpen">
+        <div class="modal-content wide-modal">
+          <span class="close" (click)="closeQuickBuild()">&times;</span>
+          <h3>Quick build</h3>
+          <p class="muted">
+            Say how many pieces should carry each stat and it lays the set out for you.
+            Every line is rolled at +{{ MaxStatLine }}, and no piece takes the same stat twice,
+            so {{ GearSlots.length }} is the most of anything you can ask for.
+          </p>
+
+          <div class="pill-group">
+            <label class="pill-option">
+              <input type="radio" name="quick-class" [(ngModel)]="quickBuildClass" value="Seyan" />
+              <span>Seyan</span>
+            </label>
+            <label class="pill-option">
+              <input type="radio" name="quick-class" [(ngModel)]="quickBuildClass" value="Warrior" />
+              <span>Warrior</span>
+            </label>
+            <label class="pill-option">
+              <input type="radio" name="quick-class" [(ngModel)]="quickBuildClass" value="Mage" />
+              <span>Mage</span>
+            </label>
+          </div>
+
+          <div class="table-scroll">
+            <table class="stat-table">
+              <thead>
+                <tr>
+                  <th class="stat-name-col">Stat</th>
+                  <th>Obol</th>
+                  <th>Pieces</th>
+                  <th>Total +</th>
+                  <th>Obols</th>
+                  <th>Maxes base</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let demand of quickDemands">
+                  <td>{{ demand.stat }}</td>
+                  <td class="numeric-col">{{ ObolCosts[demand.stat] }}</td>
+                  <td class="numeric-col">
+                    <div class="base-input-container">
+                      <button class="decrement-btn" type="button" [disabled]="demand.count <= 0" (click)="adjustDemand(demand, -1)">-</button>
+                      <input class="number-input" type="number" [min]="0" [max]="GearSlots.length"
+                             [(ngModel)]="demand.count" (change)="sanitizeDemand(demand)" (click)="selectText($event)" />
+                      <button class="increment-btn" type="button" [disabled]="demand.count >= GearSlots.length" (click)="adjustDemand(demand, 1)">+</button>
+                    </div>
+                  </td>
+                  <td class="numeric-col">{{ demandPlus(demand) | number }}</td>
+                  <td class="numeric-col">{{ demandObols(demand) | number }}</td>
+                  <td class="numeric-col">{{ demandBase(demand) || '&mdash;' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="summary-strip quick-totals">
+            <div class="summary-item level-item">
+              <span class="summary-label">Lines</span>
+              <span class="summary-number">{{ quickLinesUsed }} / {{ quickLineCapacity }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Obols</span>
+              <span class="summary-number">{{ quickTotalObols | number }}</span>
+            </div>
+          </div>
+
+          <p class="muted helper-text" *ngIf="quickOverCapacity">
+            That is more stat lines than {{ GearSlots.length }} pieces can hold &mdash; anything past
+            {{ quickLineCapacity }} will be left off.
+          </p>
+
+          <div class="modal-actions">
+            <button class="ghost-button" type="button" (click)="closeQuickBuild()">Cancel</button>
+            <button class="primary-button" type="button" [disabled]="quickLinesUsed === 0" (click)="createQuickSet()">Create</button>
+          </div>
+        </div>
+      </div>
     </ng-container>
   </div>
 </div>

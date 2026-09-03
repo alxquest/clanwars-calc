@@ -41,7 +41,18 @@ otherwise drop Angular's hashed `_`-prefixed files).
 ## Set maker
 
 A second mode (the tabs under the header) for building gear sets across the 11 modifiable
-worn slots — the right hand holds a torch on this server and is not one of them.
+worn slots, in the client's own left-to-right order — Ring, Weapon, Ring, Amulet, Hat,
+Cape, Chest, Belt, Sleeves, Pants, Boots. The right hand holds a torch on this server and
+is not one of them. Each slot is labelled with the game's own inventory sprite, copied
+into `public/gear/`.
+
+**Quick build** takes a count per stat — how many pieces should carry it, capped at 11
+since a piece can't take the same stat twice — and lays the set out for you at +20 a
+line. It shows each stat's total +, its obols, and the base at which a wearer's gear
+allowance would swallow that total. Placement keeps Wis/Int/Agi/Str together, keeps
+attack/parry/immunity and lightning/fire/magic-shield/immunity together, otherwise pairs
+stats of similar price, puts the dearest stats on the armourless pieces for warrior and
+seyan sets, and fills the weapon last.
 
 Each piece carries three stat lines up to +20, one HP/Endurance/Mana implicit from +1 to
 +10, and one "special" +1 in any stat. Pieces marked **101+** can mirror any line they

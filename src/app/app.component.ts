@@ -31,10 +31,15 @@ import {
   ObolCosts,
   OrbExpCost,
   OrbGoldCost,
+  QuickDemand,
   SetTotals,
+  SlotIcons,
+  baseToUseGear,
+  buildQuickSet,
   calculateSetTotals,
   emptySet,
   parseSet,
+  quickBuildCapacity,
   serializeSet
 } from './gear-set';
 
@@ -476,6 +481,81 @@ export class AppComponent implements OnInit {
   MaxMirrored = MaxMirrored;
   OrbGoldCost = OrbGoldCost;
   OrbExpCost = OrbExpCost;
+  SlotIcons = SlotIcons;
+
+  // --- Quick build -----------------------------------------------------
+  isQuickBuildOpen = false;
+  quickBuildClass = Classes.Seyan;
+  quickDemands: QuickDemand[] = [];
+
+  openQuickBuild(): void {
+    this.quickBuildClass = this.selectedBuild?.selectedClass ?? Classes.Seyan;
+    this.quickDemands = GearStats.map(stat => ({ stat, count: 0 }));
+    this.isQuickBuildOpen = true;
+  }
+
+  closeQuickBuild(): void {
+    this.isQuickBuildOpen = false;
+  }
+
+  adjustDemand(demand: QuickDemand, by: number): void {
+    // One of any stat per piece, so 11 pieces is the ceiling.
+    demand.count = Math.max(0, Math.min(GearSlots.length, (Number(demand.count) || 0) + by));
+  }
+
+  sanitizeDemand(demand: QuickDemand): void {
+    demand.count = Math.max(0, Math.min(GearSlots.length, Math.round(Number(demand.count) || 0)));
+  }
+
+  demandPlus(demand: QuickDemand): number {
+    return (Number(demand.count) || 0) * MaxStatLine;
+  }
+
+  demandObols(demand: QuickDemand): number {
+    const free = this.editingSet ? (this.editingSet.useSU ? (this.editingSet.useGU ? 2 : 1) : 0) : 0;
+    const paid = Math.max(0, MaxStatLine - free);
+    return (Number(demand.count) || 0) * paid * (ObolCosts[demand.stat] ?? 0);
+  }
+
+  demandBase(demand: QuickDemand): number {
+    return baseToUseGear(this.demandPlus(demand), this.quickBuildClass);
+  }
+
+  get quickLinesUsed(): number {
+    return this.quickDemands.reduce((sum, d) => sum + (Number(d.count) || 0), 0);
+  }
+
+  get quickLineCapacity(): number {
+    return quickBuildCapacity();
+  }
+
+  get quickTotalObols(): number {
+    return this.quickDemands.reduce((sum, d) => sum + this.demandObols(d), 0);
+  }
+
+  get quickOverCapacity(): boolean {
+    return this.quickLinesUsed > this.quickLineCapacity;
+  }
+
+  createQuickSet(): void {
+    const demands = this.quickDemands.filter(d => (Number(d.count) || 0) > 0);
+    if (!demands.length) {
+      return;
+    }
+
+    const set = buildQuickSet(demands, this.quickBuildClass, `Quick ${this.quickBuildClass} set`);
+    // Carry the unit choices over from whatever is open, since they drive cost.
+    if (this.editingSet) {
+      set.useSU = this.editingSet.useSU;
+      set.useGU = this.editingSet.useGU;
+    }
+
+    this.gearSets.push(set);
+    this.editingSet = set;
+    this.refreshSetTotals();
+    this.saveGearSets();
+    this.isQuickBuildOpen = false;
+  }
 
   private autoSaveTimer: any = null;
   private lastAutoSaveSnapshot = '';
